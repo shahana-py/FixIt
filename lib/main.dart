@@ -1,10 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fixit/core/shared/view/help_and_support_page.dart';
 import 'package:fixit/core/shared/view/login_page.dart';
+import 'package:fixit/core/shared/view/report_complaints_page.dart';
 import 'package:fixit/core/shared/view/splash_page.dart';
 import 'package:fixit/features/admin/view/admin_home_page.dart';
 import 'package:fixit/features/admin/view/manage_categories_page.dart';
-import 'package:fixit/features/admin/view/manage_feedbacks_complaints.dart';
+import 'package:fixit/features/admin/view/manage_complaints_page.dart';
 import 'package:fixit/features/admin/view/manage_notifications_page.dart';
 import 'package:fixit/features/admin/view/manage_offers_page.dart';
 import 'package:fixit/features/admin/view/manage_provider_approvals.dart';
@@ -26,6 +27,7 @@ import 'package:fixit/features/user/view/user_notifications_page.dart';
 import 'package:fixit/features/user/view/user_register_page.dart';
 import 'package:fixit/features/user/view/user_settings_page.dart';
 import 'package:fixit/features/user/view/view_all_providers.dart';
+import 'package:fixit/features/user/view/view_services_page.dart';
 import 'package:flutter/material.dart';
 
 import 'features/user/view/user_home_page.dart';
@@ -50,6 +52,7 @@ class FixIt extends StatelessWidget {
         '/login':(context)=>LoginPage(),
         '/register':(context)=>UserRegisterPage(),
         '/home':(context)=>UserHomePage(),
+        '/userviewservicespage':(context)=>ViewServicesPage(),
         '/serviceProviderRegister':(context)=>ServiceProviderRegisterPage(),
         '/serviceProviderHome':(context)=>ProviderHome(),
         '/editprofileuser':(context)=>EditProfilePageUser(),
@@ -61,7 +64,7 @@ class FixIt extends StatelessWidget {
         '/manageapprovalspage':(context)=>ManageApprovalsPage(),
         '/managecategoriespage':(context)=>ManageCategoriesPage(),
         '/manageofferspage':(context)=>AdminOfferManagementPage(),
-        '/managefeedbackscomplaintspage':(context)=>ManageFeedbackComplaintsPage(),
+        '/managecomplaintspage':(context)=>ManageComplaintsPage(),
         '/managenotificationspage':(context)=>ManageNotificationsPage(),
         '/usernotificationpage':(context)=>UserNotificationPage(),
         '/providernotificationpage':(context)=>ServiceProviderNotificationPage(),
@@ -74,6 +77,7 @@ class FixIt extends StatelessWidget {
         '/providerjobspage':(context)=>ProviderJobsPage(),
         '/providermessagespage':(context)=>ProviderMessagesPage(),
         '/viewallproviderspage':(context)=>ViewAllServiceProvidersPage(),
+        '/reportcomplaintspage':(context)=>ReportComplaintsPage(),
 
       },
       initialRoute: '/',

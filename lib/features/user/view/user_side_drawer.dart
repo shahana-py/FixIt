@@ -90,7 +90,7 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
               color: Colors.blue,
             ),
             currentAccountPicture: CircleAvatar(
-              radius: 50,
+              radius: 40,
               backgroundColor: Colors.white,
               backgroundImage: userData!['profileImage'] != null && userData!['profileImage'].isNotEmpty
                   ? NetworkImage(userData!['profileImage'])
@@ -115,7 +115,12 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             ),
           ),
 
+
           // Drawer Menu Items
+          Padding(
+            padding: const EdgeInsets.only(top: 10,left: 20),
+            child: Text("EXPLORE",style: TextStyle(color: Colors.black38,fontWeight: FontWeight.w600),),
+          ),
           _buildDrawerItem(
             icon: Icons.person,
             title: 'My Profile',
@@ -124,6 +129,7 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
               Navigator.pushNamed(context, '/userprofilepage');
             },
           ),
+
 
           _buildDrawerItem(
             icon: Icons.bookmark,
@@ -152,12 +158,28 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             },
           ),
 
+
+          Padding(
+            padding: const EdgeInsets.only(top: 10,left: 20),
+            child: Text("HELP & SUPPORT",style: TextStyle(color: Colors.black38,fontWeight: FontWeight.w600),),
+          ),
+          SizedBox(
+            height: 10,
+          ),
           _buildDrawerItem(
-            icon: Icons.support,
-            title: 'Help & Support',
+            icon: Icons.help,
+            title: 'Help Center',
             onTap: () {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/userhelpsupportpage');
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.feedback,
+            title: 'Report a Complaint',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/reportcomplaintspage');
             },
           ),
 

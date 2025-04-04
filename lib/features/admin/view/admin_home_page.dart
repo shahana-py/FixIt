@@ -115,11 +115,18 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         Navigator.pushNamed(context, '/managenotificationspage');
                       }),
                   AdminOption(
-                      title: 'Manage Feedbacks & Complaints',
+                      title: 'Manage Feedbacks & Reviews',
+                      icon: Icons.reviews,
+                      onTap: () {
+                        Navigator.pushNamed(context, '/managefeedbackspage');
+                      }),
+                  AdminOption(
+                      title: 'Manage Complaints',
                       icon: Icons.feedback,
                       onTap: () {
-                        Navigator.pushNamed(context, '/managefeedbackscomplaintspage');
+                        Navigator.pushNamed(context, '/managecomplaintspage');
                       }),
+
                 ],
               ),
             ),

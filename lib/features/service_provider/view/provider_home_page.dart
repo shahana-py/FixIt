@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fixit/core/utils/custom_texts/Sub_text.dart';
@@ -33,7 +32,7 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
     User? user = _auth.currentUser;
     if (user != null) {
       DocumentSnapshot userDoc =
-      await _firestore.collection('service provider').doc(user.uid).get();
+          await _firestore.collection('service provider').doc(user.uid).get();
       if (userDoc.exists) {
         setState(() {
           providerName = userDoc['name'] ?? "Provider";
@@ -77,7 +76,10 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
                 SizedBox(height: 10),
                 ElevatedButton.icon(
                   onPressed: _pickImages,
-                  icon: Icon(Icons.photo_library,color: Colors.white,),
+                  icon: Icon(
+                    Icons.photo_library,
+                    color: Colors.white,
+                  ),
                   label: Text(
                     "Add Work Samples",
                     style: TextStyle(color: Colors.white),
@@ -113,26 +115,28 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
                       'name': serviceNameController.text,
                       'experience': experienceController.text,
                       'hourly_rate': hourlyRateController.text,
-                      'provider_id': user.uid, // Store the service provider's UID
+                      'provider_id':
+                          user.uid, // Store the service provider's UID
                     });
                     Navigator.pop(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Error: Service provider not found")),
+                      SnackBar(
+                          content: Text("Error: Service provider not found")),
                     );
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xff0F3966),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
                 "Save",
                 style: TextStyle(color: Colors.white),
               ),
             ),
-
           ],
         );
       },
@@ -175,9 +179,15 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
         ),
         title: AppBarTitle(text: "$providerName"),
         actions: [
-          IconButton(onPressed: (){
-            Navigator.pushNamed(context, '/providernotificationpage');
-          }, icon: Icon(Icons.notifications,color: Colors.white,size: 24,)),
+          IconButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/providernotificationpage');
+              },
+              icon: Icon(
+                Icons.notifications,
+                color: Colors.white,
+                size: 24,
+              )),
           SizedBox(width: 10),
           IconButton(
             onPressed: () async {
@@ -195,7 +205,6 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
       ),
       body: Column(
         children: [
-
           Card(
             shadowColor: Colors.black,
             shape:
@@ -216,7 +225,7 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 10,left: 5),
+                    padding: const EdgeInsets.only(top: 10, left: 5),
                     child: Text(
                       "Be the Expert Everyone’s Looking For!",
                       style: TextStyle(
@@ -234,162 +243,397 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SubText(text: "My Services",fontSize: 20,),
+                SubText(
+                  text: "My Services",
+                  fontSize: 20,
+                ),
                 GestureDetector(
-                    onTap: (){
+                    onTap: () {
                       Navigator.pushNamed(context, "/providerAllServicesPage");
                     },
-                    child: SubText(text: "View All",color: Colors.blue,fontSize: 18,fontWeight: FontWeight.normal,))
+                    child: SubText(
+                      text: "View All",
+                      color: Colors.blue,
+                      fontSize: 18,
+                      fontWeight: FontWeight.normal,
+                    ))
               ],
             ),
           ),
-          Expanded(
-            child: StreamBuilder(
-              stream: _firestore.collection('services').where('provider_id', isEqualTo: _auth.currentUser?.uid).snapshots(),
-              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                if (!snapshot.hasData) {
-                  return Center(
-                      child:
-                          CircularProgressIndicator(color: Color(0xff0F3966)));
-                }
-                var services = snapshot.data!.docs;
-                return services.isEmpty
-                    ? Center(
-                        child: GestureDetector(
-                          onTap: _showAddServiceDialog,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_circle,
-                                  size: 80, color: Color(0xff0F3966)),
-                              SizedBox(height: 10),
-                              Text("Add a Service",
-                                  style: TextStyle(
-                                      fontSize: 18, color: Color(0xff0F3966))),
-                            ],
-                          ),
-                        ),
-                      )
-                    : ListView(
-                        children: services.map((service) {
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15)),
-                            elevation: 5,
-                            color: Color(0xffC9E4CA),
-                            margin: EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 10),
-                            child: ListTile(
-                              contentPadding: EdgeInsets.all(12),
-                              title: Text(service['name'],
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xff0F3966))),
-                              subtitle: Text(
-                                  "${service['experience']} years experience | \$${service['hourly_rate']}/hr"),
-                              leading:
-                                  Icon(Icons.build, color: Color(0xff0F3966)),
-                              trailing:
-                              Padding(
-                                padding: const EdgeInsets.only(right: 10),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.star,color: Colors.amber,),
-                                    SubText(text: "4.5",fontSize: 15,fontWeight: FontWeight.normal,)
-                                  ],
-                                ),
+          Row(
+            children: [
+              Expanded(
+                child: StreamBuilder(
+                  stream: _firestore
+                      .collection('services')
+                      .where('provider_id', isEqualTo: _auth.currentUser?.uid)
+                      .snapshots(),
+                  builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                    if (!snapshot.hasData) {
+                      return Center(
+                        child:
+                            CircularProgressIndicator(color: Color(0xff0F3966)),
+                      );
+                    }
+
+                    var services = snapshot.data!.docs;
+
+                    return services.isEmpty
+                        ? Center(
+                            child: Text('No services found'),
+                          )
+                        : SingleChildScrollView(
+                            scrollDirection:
+                                Axis.horizontal, // Allows horizontal scrolling
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 10,left: 10),
+                              child: Row(
+                                children: services.map((service) {
+                                  return Container(
+                                    width:
+                                        180, // Ensuring fixed width for each card
+                                    margin: EdgeInsets.only(
+                                        right: 10), // Spacing between cards
+                                    child: Card(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      elevation: 5,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize
+                                            .min, // Prevents unnecessary expansion
+                                        children: [
+                                          // Top section (icon)
+                                          Container(
+                                            height: 100,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.vertical(
+                                                  top: Radius.circular(20)),
+                                              color: Color(0xffC9E4CA),
+                                            ),
+                                            child: Icon(Icons.build,
+                                                color: Color(0xff0F3966)),
+                                          ),
+
+                                          // Bottom section (text)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 8),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      service['name'],
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Color(0xff0F3966),
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        overflow:
+                                                            TextOverflow.ellipsis,
+                                                      ),
+                                                      maxLines: 1,
+                                                    ),
+                                                    SizedBox(
+                                                        height:
+                                                            4), // Avoids tight spacing
+                                                    Text(
+                                                      "\$${service['hourly_rate']}/h",
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        color:Color(0xff0F3966) ,
+                                                        overflow:
+                                                            TextOverflow.ellipsis,
+                                                      ),
+                                                      maxLines: 1,
+                                                    ),
+                                                  ],
+                                                ),
+                                                Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+
+                                                      borderRadius: BorderRadius.circular(20)),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.all(5.0),
+                                                    child: Row(
+                                                      children: [
+
+                                                        Icon(Icons.star,
+                                                            color: Colors.amber,size: 22,),
+                                                        SubText(
+                                                          text: "4.5",
+                                                          fontSize: 13,
+                                                          fontWeight:
+                                                          FontWeight.w600,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               ),
-
-
                             ),
                           );
-                        }).toList(),
-                      );
-              },
-            ),
+                  },
+                ),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SubText(text: "New Requests",fontSize: 20,),
-                GestureDetector(
-                    onTap: (){
-                      // Navigator.pushNamed(context, "/providerAllServicesPage");
-                    },
-                    child: SubText(text: "View All",color: Colors.blue,fontSize: 18,fontWeight: FontWeight.normal,))
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              shrinkWrap: true,
 
-              physics: NeverScrollableScrollPhysics(), // Prevents conflicts in scrolling
-              children: [
-                Card(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15)),
-                  elevation: 5,
-                  color: Color(0xffC9E4CA),
-                  margin: EdgeInsets.symmetric(
-                      vertical: 8, horizontal: 10),
-                  child: Container(
-                    width: double.infinity,
-                    height: 120,
-                    child: ListTile(
+          // Expanded(
+          //   child: StreamBuilder(
+          //     stream: _firestore
+          //         .collection('services')
+          //         .where('provider_id', isEqualTo: _auth.currentUser?.uid)
+          //         .snapshots(),
+          //     builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          //       if (!snapshot.hasData) {
+          //         return Center(
+          //             child:
+          //                 CircularProgressIndicator(color: Color(0xff0F3966)));
+          //       }
+          //       var services = snapshot.data!.docs;
+          //       return services.isEmpty
+          //           ? Center(
+          //               child: GestureDetector(
+          //                 onTap: _showAddServiceDialog,
+          //                 child: Column(
+          //                   mainAxisAlignment: MainAxisAlignment.center,
+          //                   children: [
+          //                     Icon(Icons.add_circle,
+          //                         size: 80, color: Color(0xff0F3966)),
+          //                     SizedBox(height: 10),
+          //                     Text("Add a Service",
+          //                         style: TextStyle(
+          //                             fontSize: 18, color: Color(0xff0F3966))),
+          //                   ],
+          //                 ),
+          //               ),
+          //             )
+          //           : Row(
+          //               mainAxisAlignment: MainAxisAlignment.start,
+          //               crossAxisAlignment: CrossAxisAlignment.start,
+          //               spacing: 10,
+          //               children: services.map((service) {
+          //                 return Card(
+          //                   shape: RoundedRectangleBorder(
+          //                     borderRadius: BorderRadius.circular(30),
+          //                   ),
+          //                   elevation: 5,
+          //                   child: Column(
+          //                     children: [
+          //                       Container(
+          //                         height: 70,
+          //                         width: 150,
+          //                         decoration: BoxDecoration(
+          //                           borderRadius: BorderRadius.only(
+          //                             topLeft: Radius.circular(30),
+          //                             topRight: Radius.circular(30),
+          //                           ),
+          //                           color: Color(0xffC9E4CA),
+          //                         ),
+          //                         child: Icon(Icons.build,
+          //                             color: Color(0xff0F3966)),
+          //                       ),
+          //                       Container(
+          //                         height: 40,
+          //                         width: 100,
+          //                         decoration: BoxDecoration(
+          //                           borderRadius: BorderRadius.only(
+          //                             bottomLeft: Radius.circular(30),
+          //                             bottomRight: Radius.circular(30),
+          //                           ),
+          //                           color: Color(0xffC9E4CA),
+          //                         ),
+          //                         child: Row(
+          //                           mainAxisAlignment:
+          //                               MainAxisAlignment.spaceBetween,
+          //                           crossAxisAlignment:
+          //                               CrossAxisAlignment.center,
+          //                           children: [
+          //                             Column(
+          //                               mainAxisAlignment:
+          //                                   MainAxisAlignment.center,
+          //                               crossAxisAlignment:
+          //                                   CrossAxisAlignment.start,
+          //                               children: [
+          //                                 Text(
+          //                                   service['name'],
+          //                                   style: TextStyle(
+          //                                     fontSize: 12,
+          //                                     fontWeight: FontWeight.bold,
+          //                                   ),
+          //                                 ),
+          //                                 Text(
+          //                                   "${service['experience']} years | \$${service['hourly_rate']}/hr",
+          //                                   style: TextStyle(
+          //                                     fontSize: 10,
+          //                                   ),
+          //                                 ),
+          //                               ],
+          //                             ),
+          //                             Row(
+          //                               children: [
+          //                                 SubText(
+          //                                   text: "4.5",
+          //                                   fontSize: 15,
+          //                                   fontWeight: FontWeight.normal,
+          //                                 ),
+          //                                 Icon(Icons.star, color: Colors.amber),
+          //                               ],
+          //                             ),
+          //                           ],
+          //                         ),
+          //                       ),
+          //                     ],
+          //                   ),
+          //                 );
+          //               }).toList(),
+          //             );
+          //       // : ListView(
+          //       //     children: services.map((service) {
+          //       //       return Card(
+          //       //         shape: RoundedRectangleBorder(
+          //       //             borderRadius: BorderRadius.circular(15)),
+          //       //         elevation: 5,
+          //       //         color: Color(0xffC9E4CA),
+          //       //         margin: EdgeInsets.symmetric(
+          //       //             vertical: 8, horizontal: 10),
+          //       //         child: ListTile(
+          //       //           contentPadding: EdgeInsets.all(12),
+          //       //           title: Text(service['name'],
+          //       //               style: TextStyle(
+          //       //                   fontWeight: FontWeight.bold,
+          //       //                   color: Color(0xff0F3966))),
+          //       //           subtitle: Text(
+          //       //               "${service['experience']} years experience | \$${service['hourly_rate']}/hr"),
+          //       //           leading:
+          //       //               Icon(Icons.build, color: Color(0xff0F3966)),
+          //       //           trailing:
+          //       //           Padding(
+          //       //             padding: const EdgeInsets.only(right: 10),
+          //       //             child: Column(
+          //       //               children: [
+          //       //                 Icon(Icons.star,color: Colors.amber,),
+          //       //                 SubText(text: "4.5",fontSize: 15,fontWeight: FontWeight.normal,)
+          //       //               ],
+          //       //             ),
+          //       //           ),
+          //       //
+          //       //
+          //       //         ),
+          //       //       );
+          //       //     }).toList(),
+          //       //   );
+          //     },
+          //   ),
+          // ),
 
 
-                      contentPadding: EdgeInsets.all(10),
-                      title: Padding(
-                        padding: const EdgeInsets.only(left: 20),
-                        child: Text("Leaky Faucet",
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xff0F3966))),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(left: 20),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_month),
-                                SizedBox(width: 5),
-                                Text("30 March 2024")
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Icon(Icons.watch_later_outlined),
-                                SizedBox(width: 5),
-                                Text("10:00 AM")
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      leading:  Container(
-                        height: 150,
-                        width: 150,
 
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              ],
-            ),
-          )
 
+          // Padding(
+          //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+          //   child: Row(
+          //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //     children: [
+          //       SubText(
+          //         text: "New Requests",
+          //         fontSize: 20,
+          //       ),
+          //       GestureDetector(
+          //           onTap: () {
+          //             // Navigator.pushNamed(context, "/providerAllServicesPage");
+          //           },
+          //           child: SubText(
+          //             text: "View All",
+          //             color: Colors.blue,
+          //             fontSize: 18,
+          //             fontWeight: FontWeight.normal,
+          //           ))
+          //     ],
+          //   ),
+          // ),
+          // Expanded(
+          //   child: ListView(
+          //     shrinkWrap: true,
+          //
+          //     physics:
+          //         NeverScrollableScrollPhysics(), // Prevents conflicts in scrolling
+          //     children: [
+          //       Card(
+          //         shape: RoundedRectangleBorder(
+          //             borderRadius: BorderRadius.circular(15)),
+          //         elevation: 5,
+          //         color: Color(0xffC9E4CA),
+          //         margin: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          //         child: Container(
+          //           width: double.infinity,
+          //           height: 120,
+          //           child: ListTile(
+          //             contentPadding: EdgeInsets.all(10),
+          //             title: Padding(
+          //               padding: const EdgeInsets.only(left: 20),
+          //               child: Text("Leaky Faucet",
+          //                   style: TextStyle(
+          //                       fontWeight: FontWeight.bold,
+          //                       color: Color(0xff0F3966))),
+          //             ),
+          //             subtitle: Padding(
+          //               padding: const EdgeInsets.only(left: 20),
+          //               child: Column(
+          //                 children: [
+          //                   Row(
+          //                     children: [
+          //                       Icon(Icons.calendar_month),
+          //                       SizedBox(width: 5),
+          //                       Text("30 March 2024")
+          //                     ],
+          //                   ),
+          //                   Row(
+          //                     children: [
+          //                       Icon(Icons.watch_later_outlined),
+          //                       SizedBox(width: 5),
+          //                       Text("10:00 AM")
+          //                     ],
+          //                   ),
+          //                 ],
+          //               ),
+          //             ),
+          //             leading: Container(
+          //               height: 150,
+          //               width: 150,
+          //               decoration: BoxDecoration(
+          //                 color: Colors.blue,
+          //                 borderRadius: BorderRadius.circular(15),
+          //               ),
+          //             ),
+          //           ),
+          //         ),
+          //       )
+          //     ],
+          //   ),
+          // )
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -400,5 +644,3 @@ class _ServiceProviderHomePageState extends State<ServiceProviderHomePage> {
     );
   }
 }
-
-

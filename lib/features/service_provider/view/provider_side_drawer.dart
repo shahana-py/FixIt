@@ -87,16 +87,17 @@ class _ProviderSideDrawerState extends State<ProviderSideDrawer> {
           // Header with Profile Information
           UserAccountsDrawerHeader(
             decoration: BoxDecoration(
-              color: Color(0xff0F3966),
+              color: Colors.blue,
             ),
 
             currentAccountPicture: CircleAvatar(
+              radius: 40,
               backgroundColor: Colors.white,
               backgroundImage: providerData!['profileImage'] != null && providerData!['profileImage'].isNotEmpty
                   ? NetworkImage(providerData!['profileImage'])
                   : null,
               child: providerData!['profileImage'] == null || providerData!['profileImage'].isEmpty
-                  ? Icon(Icons.person, color: Color(0xff0F3966), size: 50)
+                  ? Icon(Icons.person, color: Colors.blueAccent, size: 50)
                   : null,
             ),
             accountName: Text(
@@ -116,6 +117,10 @@ class _ProviderSideDrawerState extends State<ProviderSideDrawer> {
           ),
 
           // Drawer Menu Items
+          Padding(
+            padding: const EdgeInsets.only(top: 10,left: 20),
+            child: Text("EXPLORE",style: TextStyle(color: Colors.black38,fontWeight: FontWeight.w600),),
+          ),
           _buildDrawerItem(
             icon: Icons.person,
             title: 'My Profile',
@@ -160,22 +165,34 @@ class _ProviderSideDrawerState extends State<ProviderSideDrawer> {
               // Navigate to reviews page
             },
           ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10,left: 20),
+            child: Text("HELP & SUPPORT",style: TextStyle(color: Colors.black38,fontWeight: FontWeight.w600),),
+          ),
 
+
+          _buildDrawerItem(
+            icon: Icons.help,
+            title: 'Help Center',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/providerhelpsupportpage');
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.feedback,
+            title: 'Report a Complaint',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/reportcomplaintspage');
+            },
+          ),
           _buildDrawerItem(
             icon: Icons.settings,
             title: 'Settings',
             onTap: () {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/providersettingspage');
-            },
-          ),
-
-          _buildDrawerItem(
-            icon: Icons.help,
-            title: 'Help & Support',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/providerhelpsupportpage');
             },
           ),
 
