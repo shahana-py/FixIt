@@ -24,6 +24,7 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
     return Scaffold(
       backgroundColor: Color(0xffC9E4CA),
       body: Container(
+
           child: Form(
         key: _registerKey,
         child: SingleChildScrollView(
@@ -309,7 +310,7 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
                             'role': "user"
                           }).then((value) {
                             Navigator.pushNamedAndRemoveUntil(
-                                context, '/home', (Route route) => false);
+                                context, '/userwelcomepage', (Route route) => false);
                           });
                         }
                       }

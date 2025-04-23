@@ -265,6 +265,7 @@ class _ManageApprovalsPageState extends State<ManageApprovalsPage> {
     try {
       await _firestore.collection('service provider').doc(providerId).update({
         'status': 1,
+        'isApproved': true, // <-- Add this line
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,6 +287,7 @@ class _ManageApprovalsPageState extends State<ManageApprovalsPage> {
       });
     }
   }
+
 
   Widget _buildProviderDetails(Map<String, dynamic> provider) {
     return Container(

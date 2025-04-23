@@ -1,3 +1,5 @@
+//
+//
 // import 'dart:io';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
@@ -26,7 +28,7 @@
 //   TextEditingController _phoneController = TextEditingController();
 //   TextEditingController _addressController = TextEditingController();
 //   TextEditingController _experienceController = TextEditingController();
-//   TextEditingController _certificationsController = TextEditingController();
+//
 //
 //   List<String> _selectedServices = [];
 //   List<String> _selectedAvailability = [];
@@ -92,7 +94,7 @@
 //           _phoneController.text = providerData['phone'] ?? '';
 //           _addressController.text = providerData['address'] ?? '';
 //           _experienceController.text = providerData['experience'] ?? '';
-//           _certificationsController.text = providerData['certifications'] ?? '';
+//
 //           _profileImageUrl = providerData['profileImage'];
 //
 //           _selectedServices = List<String>.from(providerData['services'] ?? []);
@@ -111,31 +113,38 @@
 //
 //     User? user = _auth.currentUser;
 //     if (user != null) {
-//       // Upload new profile image if selected
-//       String? imageUrl = _profileImageUrl;
-//       if (_isImageUpdated && _profileImage != null) {
-//         imageUrl = await _uploadImageToFirebase(_profileImage!);
+//       try {
+//         // Upload new profile image if selected
+//         String? imageUrl = _profileImageUrl;
+//         if (_isImageUpdated && _profileImage != null) {
+//           imageUrl = await _uploadImageToFirebase(_profileImage!);
+//         }
+//
+//         await FirebaseFirestore.instance.collection('service provider').doc(user.uid).update({
+//           'name': _nameController.text.trim(),
+//           'email': _emailController.text.trim(),
+//           'phone': _phoneController.text.trim(),
+//           'address': _addressController.text.trim(),
+//           'experience': _experienceController.text.trim(),
+//
+//           'services': _selectedServices,
+//           'availability': _selectedAvailability,
+//           'profileImage': imageUrl ?? '',
+//         });
+//
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("Profile updated successfully!"), backgroundColor: Colors.green),
+//         );
+//
+//         // Return a result to indicate successful update
+//         Navigator.pop(context, true);
+//       } catch (e) {
+//         print("Error updating profile: $e");
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("Error updating profile. Please try again."), backgroundColor: Colors.red),
+//         );
+//         setState(() => _isLoading = false);
 //       }
-//
-//       await FirebaseFirestore.instance.collection('service provider').doc(user.uid).update({
-//         'name': _nameController.text.trim(),
-//         'email': _emailController.text.trim(),
-//         'phone': _phoneController.text.trim(),
-//         'address': _addressController.text.trim(),
-//         'experience': _experienceController.text.trim(),
-//         'certifications': _certificationsController.text.trim(),
-//         'services': _selectedServices,
-//         'availability': _selectedAvailability,
-//         'profileImage': imageUrl ?? '',
-//       });
-//
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(content: Text("Profile updated successfully!"), backgroundColor: Colors.green),
-//       );
-//
-//       setState(() => _isLoading = false);
-//
-//       Navigator.pop(context); // Go back to Profile Page
 //     }
 //   }
 //
@@ -169,9 +178,8 @@
 //               _buildTextField(_addressController, "Address", Icons.location_on),
 //               SizedBox(height: 15),
 //               _buildTextField(_experienceController, "Years of Experience", Icons.work),
-//               SizedBox(height: 15),
-//               _buildTextField(_certificationsController, "Certifications (if any)", Icons.school),
 //               SizedBox(height: 20),
+//
 //
 //               _buildMultiSelectChips("Services Offered", _availableServices, _selectedServices),
 //               SizedBox(height: 20),
@@ -332,7 +340,7 @@ class _EditProfilePageProviderState extends State<EditProfilePageProvider> {
   TextEditingController _phoneController = TextEditingController();
   TextEditingController _addressController = TextEditingController();
   TextEditingController _experienceController = TextEditingController();
-  TextEditingController _certificationsController = TextEditingController();
+
 
   List<String> _selectedServices = [];
   List<String> _selectedAvailability = [];
@@ -368,9 +376,17 @@ class _EditProfilePageProviderState extends State<EditProfilePageProvider> {
 
   Future<String?> _uploadImageToFirebase(File image) async {
     try {
-      String fileName = 'profile_pictures/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      // Create a unique filename to avoid cache issues
+      String fileName = 'profile_pictures/${_auth.currentUser?.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = FirebaseStorage.instance.ref().child(fileName);
-      UploadTask uploadTask = ref.putFile(image);
+
+      // Set metadata to prevent caching issues
+      SettableMetadata metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'timestamp': DateTime.now().toIso8601String()},
+      );
+
+      UploadTask uploadTask = ref.putFile(image, metadata);
 
       TaskSnapshot snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
@@ -398,7 +414,7 @@ class _EditProfilePageProviderState extends State<EditProfilePageProvider> {
           _phoneController.text = providerData['phone'] ?? '';
           _addressController.text = providerData['address'] ?? '';
           _experienceController.text = providerData['experience'] ?? '';
-          _certificationsController.text = providerData['certifications'] ?? '';
+
           _profileImageUrl = providerData['profileImage'];
 
           _selectedServices = List<String>.from(providerData['services'] ?? []);
@@ -424,17 +440,23 @@ class _EditProfilePageProviderState extends State<EditProfilePageProvider> {
           imageUrl = await _uploadImageToFirebase(_profileImage!);
         }
 
-        await FirebaseFirestore.instance.collection('service provider').doc(user.uid).update({
+        // Add a timestamp to force update
+        final updateData = {
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'phone': _phoneController.text.trim(),
           'address': _addressController.text.trim(),
           'experience': _experienceController.text.trim(),
-          'certifications': _certificationsController.text.trim(),
           'services': _selectedServices,
           'availability': _selectedAvailability,
           'profileImage': imageUrl ?? '',
-        });
+          'lastUpdated': FieldValue.serverTimestamp(), // Add a timestamp
+        };
+
+        await FirebaseFirestore.instance
+            .collection('service provider')
+            .doc(user.uid)
+            .update(updateData);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Profile updated successfully!"), backgroundColor: Colors.green),
@@ -482,9 +504,8 @@ class _EditProfilePageProviderState extends State<EditProfilePageProvider> {
               _buildTextField(_addressController, "Address", Icons.location_on),
               SizedBox(height: 15),
               _buildTextField(_experienceController, "Years of Experience", Icons.work),
-              SizedBox(height: 15),
-              _buildTextField(_certificationsController, "Certifications (if any)", Icons.school),
               SizedBox(height: 20),
+
 
               _buildMultiSelectChips("Services Offered", _availableServices, _selectedServices),
               SizedBox(height: 20),
@@ -519,17 +540,37 @@ class _EditProfilePageProviderState extends State<EditProfilePageProvider> {
   Widget _buildProfileImage() {
     return GestureDetector(
       onTap: _pickImage,
-      child: CircleAvatar(
-        radius: 60,
-        backgroundColor: Colors.white,
-        backgroundImage: _profileImage != null
-            ? FileImage(_profileImage!)
-            : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
-            ? NetworkImage(_profileImageUrl!) as ImageProvider
-            : null,
-        child: (_profileImage == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
-            ? Icon(Icons.camera_alt, size: 40, color: Color(0xff0F3966))
-            : null,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: Colors.white,
+            backgroundImage: _profileImage != null
+                ? FileImage(_profileImage!)
+                : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
+                ? NetworkImage(_profileImageUrl! + "?t=${DateTime.now().millisecondsSinceEpoch}") as ImageProvider
+                : null,
+            child: (_profileImage == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
+                ? Icon(Icons.camera_alt, size: 40, color: Color(0xff0F3966))
+                : null,
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Color(0xff0F3966),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.edit,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

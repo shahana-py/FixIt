@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserAccountPage extends StatefulWidget {
   const UserAccountPage({super.key});
@@ -35,6 +36,36 @@ class _UserAccountPageState extends State<UserAccountPage> {
     }
   }
 
+  void _showLogoutConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Logout'),
+          content: Text('Are you sure you want to log out?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel',style: TextStyle(color: Colors.red),),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              child: Text('Logout',style: TextStyle(color: Colors.white),),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                await _auth.signOut();
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,109 +91,141 @@ class _UserAccountPageState extends State<UserAccountPage> {
       backgroundColor: Colors.white,
       body: userData == null
           ? Center(child: CircularProgressIndicator(color: Color(0xff0F3966),)) // Loading indicator
-          : Column(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: double.infinity,
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                  color: Colors.blue,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Hello,",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      userData!['name'] ?? 'User',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 50,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                bottom: -45,
-                left: MediaQuery.of(context).size.width / 2 - 45,
-                child: CircleAvatar(
-                  radius: 45,
-                  backgroundColor: Colors.yellow,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 50),
-
-          /// **User Information with Styled Cards**
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          : SingleChildScrollView(
             child: Column(
+                    children: [
+            Stack(
+              clipBehavior: Clip.none,
               children: [
-                _buildInfoCard(
-                  icon: Icons.email,
-                  title: "Email",
-                  value: userData!['email'] ?? 'Not Available',
+                Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
+                    color: Colors.blue,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+
+                    children: [
+                      Text(
+                        "Hello,",
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        userData!['name'] ?? 'User',
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(height: 10),
-                _buildInfoCard(
-                  icon: Icons.phone,
-                  title: "Phone",
-                  value: userData!['phone'] ?? 'Not Available',
-                ),
-                SizedBox(height: 10),
-                _buildInfoCard(
-                  icon: Icons.location_on,
-                  title: "Address",
-                  value: userData!['address'] ?? 'Not Available',
+                Positioned(
+                  top: 25,
+                  left: 20,
+                  child: CircleAvatar(
+                    radius: 55,
+                    backgroundColor: Colors.yellow,
+                  ),
                 ),
               ],
             ),
-          ),
+            SizedBox(height: 50),
 
-          SizedBox(height: 20),
-
-          /// **Edit Profile Button**
-          InkWell(
-            onTap: () {
-              Navigator.pushNamed(context, "/editprofileuser");
-            },
-            borderRadius: BorderRadius.circular(40),
-            splashColor: Colors.blue,
-            child: Ink(
-              decoration: BoxDecoration(
-                color: Color(0xff0F3966),
-                borderRadius: BorderRadius.circular(40),
-              ),
-              height: 55,
-              width: 230,
-              child: Center(
-                child: Text(
-                  "Edit Your Profile",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 22),
-                ),
+            /// **User Information with Styled Cards**
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
+                children: [
+                  _buildInfoCard(
+                    icon: Icons.email,
+                    title: "Email",
+                    value: userData!['email'] ?? 'Not Available',
+                  ),
+                  SizedBox(height: 10),
+                  _buildInfoCard(
+                    icon: Icons.phone,
+                    title: "Phone",
+                    value: userData!['phone'] ?? 'Not Available',
+                  ),
+                  SizedBox(height: 10),
+                  _buildInfoCard(
+                    icon: Icons.location_on,
+                    title: "Address",
+                    value: userData!['address'] ?? 'Not Available',
+                  ),
+                ],
               ),
             ),
+
+            SizedBox(height: 20),
+
+
+
+            SizedBox(
+              height: 10,
+            ),
+            _buildDrawerItem(
+              icon: Icons.help,
+              title: 'Help Center',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/userhelpsupportpage');
+              },
+            ),
+            _buildDrawerItem(
+              icon: Icons.feedback,
+              title: 'Report a Complaint',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/reportcomplaintspage');
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.settings,
+              title: 'Settings',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/usersettingspage');
+              },
+            ),
+
+            Divider(color: Colors.grey[300]),
+
+            _buildDrawerItem(
+              icon: Icons.logout,
+              title: 'Logout',
+              onTap: _showLogoutConfirmationDialog,
+              color: Colors.red,
+            ),
+                      SizedBox(height: 20,)
+
+
+
+
+
+                    ],
+                  ),
           ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: (){
+          Navigator.pushNamed(context, "/editprofileuser");
+        },
+        backgroundColor: Color(0xff0F3966),
+        child: Icon(Icons.edit, color: Colors.white),
       ),
     );
   }
@@ -186,5 +249,34 @@ class _UserAccountPageState extends State<UserAccountPage> {
     );
   }
 }
+
+// Helper method to build drawer items
+Widget _buildDrawerItem({
+  required IconData icon,
+  required String title,
+  required VoidCallback onTap,
+  Color? color,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(left: 20),
+    child: ListTile(
+      leading: Icon(
+        icon,
+        color: color ?? Colors.blue,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: color ?? Colors.black87,
+          fontWeight: color != null ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      onTap: onTap,
+    ),
+  );
+}
+
+
+
 
 

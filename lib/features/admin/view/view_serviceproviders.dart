@@ -297,8 +297,7 @@ class _ManageServiceProvidersPageState extends State<ManageServiceProvidersPage>
           _buildDetailRow(Icons.location_on, "Address", provider['address']?.toString() ?? 'N/A'),
           SizedBox(height: 8),
           _buildDetailRow(Icons.work, "Experience", "${provider['experience']?.toString() ?? 'N/A'} years"),
-          SizedBox(height: 8),
-          _buildDetailRow(Icons.verified, "Certifications", provider['certifications']?.toString() ?? 'N/A'),
+
           SizedBox(height: 12),
           _buildServicesList("Services", (provider['services'] as List?)?.map((e) => e.toString()).toList() ?? []),
           SizedBox(height: 12),

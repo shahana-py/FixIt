@@ -161,12 +161,15 @@ class _ServiceProviderSettingsPageState extends State<ServiceProviderSettingsPag
             child: ListTile(
               leading: CircleAvatar(
                 backgroundImage: providerData != null && providerData!['profileImage'] != null
-                    ? MemoryImage(base64Decode(providerData!['profileImage']))
+                    ? (providerData!['profileImage'].startsWith('http')
+                    ? NetworkImage(providerData!['profileImage'])
+                    : MemoryImage(base64Decode(providerData!['profileImage'])) as ImageProvider)
                     : null,
                 child: providerData == null || providerData!['profileImage'] == null
                     ? Icon(Icons.person, color: Colors.blue)
                     : null,
               ),
+
               title: Text(
                 providerData?['name'] ?? 'Service Provider Profile',
                 style: TextStyle(fontWeight: FontWeight.bold),

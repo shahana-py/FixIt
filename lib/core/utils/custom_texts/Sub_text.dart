@@ -9,7 +9,7 @@ class SubText extends StatelessWidget {
   const SubText({
     Key? key,
     required this.text,
-    this.fontSize = 16.0,
+    this.fontSize = 18.0,
     this.fontWeight = FontWeight.bold,
     this.color = const Color(0xff0F3966), // Add "const" before Color
   }) : super(key: key);

@@ -21,11 +21,14 @@ import 'package:fixit/features/service_provider/view/provider_register_page.dart
 import 'package:fixit/features/service_provider/view/provider_services.dart';
 import 'package:fixit/features/service_provider/view/provider_settings_page.dart';
 import 'package:fixit/features/service_provider/view/sp_home.dart';
+import 'package:fixit/features/user/view/favourites_page.dart';
+import 'package:fixit/features/user/view/message_provider_page.dart';
 import 'package:fixit/features/user/view/user_account_page.dart';
 import 'package:fixit/features/user/view/user_edit_profile_page.dart';
 import 'package:fixit/features/user/view/user_notifications_page.dart';
 import 'package:fixit/features/user/view/user_register_page.dart';
 import 'package:fixit/features/user/view/user_settings_page.dart';
+import 'package:fixit/features/user/view/user_welcome_page.dart';
 import 'package:fixit/features/user/view/view_all_providers.dart';
 import 'package:fixit/features/user/view/view_services_page.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +54,14 @@ class FixIt extends StatelessWidget {
         '/':(context)=>SplashPage(),
         '/login':(context)=>LoginPage(),
         '/register':(context)=>UserRegisterPage(),
+        '/userwelcomepage':(context)=>WelcomeScreen(),
+        '/userwelcomepage2':(context)=>WelcomePage2(),
+        '/userfavouritespage':(context)=>FavoritesPage(),
+
+
         '/home':(context)=>UserHomePage(),
+
+
         '/userviewservicespage':(context)=>ViewServicesPage(),
         '/serviceProviderRegister':(context)=>ServiceProviderRegisterPage(),
         '/serviceProviderHome':(context)=>ProviderHome(),

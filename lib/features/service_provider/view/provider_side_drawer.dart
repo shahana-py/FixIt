@@ -100,14 +100,24 @@ class _ProviderSideDrawerState extends State<ProviderSideDrawer> {
                   ? Icon(Icons.person, color: Colors.blueAccent, size: 50)
                   : null,
             ),
-            accountName: Text(
-              providerData!['name'] ?? 'Provider',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            accountName: Row(
+              children: [
+                Text(
+                  providerData!['name'] ?? 'Provider',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                if (providerData!['status']==1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4.0),
+                    child: Icon(Icons.verified, color: Colors.green[900], size: 30),
+                  ),
+              ],
             ),
+
             accountEmail: Text(
               providerData!['email'] ?? 'email@example.com',
               style: TextStyle(

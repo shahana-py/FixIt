@@ -9,7 +9,7 @@ class AppBarTitle extends StatelessWidget {
   const AppBarTitle({
     Key? key,
     required this.text,
-    this.fontSize = 20.0,
+    this.fontSize = 18.0,
     this.fontWeight = FontWeight.w400,
     this.color = Colors.white, // Add "const" before Color
   }) : super(key: key);
