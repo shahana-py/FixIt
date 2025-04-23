@@ -1,8 +1,11 @@
 //
+// import 'package:fixit/features/user/view/service_booking_page.dart';
 // import 'package:flutter/material.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 //
 // import 'message_provider_page.dart';
+//
+//
 //
 // class ViewServiceDetailsPage extends StatefulWidget {
 //   final String serviceId;
@@ -22,6 +25,8 @@
 //   final pageController = PageController();
 //   bool showFullDescription = false;
 //   List<String> serviceImages = [];
+//
+//   Map<String, bool> _favoriteProviders = {};
 //
 //   @override
 //   void initState() {
@@ -147,6 +152,27 @@
 //     }
 //   }
 //
+//   // Navigate to the booking page
+//   void _navigateToBooking() {
+//     if (serviceData != null && providerData != null) {
+//       Navigator.push(
+//         context,
+//         MaterialPageRoute(
+//           builder: (context) => BookingPage(
+//             serviceId: widget.serviceId,
+//             serviceData: serviceData!,
+//             providerData: providerData!,
+//             serviceImages: serviceImages,
+//           ),
+//         ),
+//       );
+//     } else {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Cannot book service at this moment')),
+//       );
+//     }
+//   }
+//
 //   @override
 //   Widget build(BuildContext context) {
 //     // Calculate average rating
@@ -227,18 +253,25 @@
 //                         ),
 //                       ),
 //                       Positioned(
-//                         top: MediaQuery.of(context).padding.top + 8,
-//                         right: 16,
-//                         child: CircleAvatar(
-//                           backgroundColor: Colors.white,
-//                           radius: 22,
-//                           child: IconButton(
-//                             icon: Icon(Icons.more_horiz, size: 18),
-//                             onPressed: () {},
-//                             color: Colors.black,
+//                         top: 8,
+//                         right: 8,
+//                         child: GestureDetector(
+//                           onTap: () {
+//                             setState(() {
+//                               _favoriteProviders[providerId] = !(_favoriteProviders[providerId] ?? false);
+//                             });
+//                           },
+//                           child: CircleAvatar(
+//                             backgroundColor: Colors.white70,
+//                             radius: 16,
+//                             child: Icon(
+//                               (_favoriteProviders[providerId] ?? false) ? Icons.favorite : Icons.favorite_border,
+//                               color: (_favoriteProviders[providerId] ?? false) ? Colors.red : Colors.grey,
+//                               size: 18,
+//                             ),
 //                           ),
 //                         ),
-//                       ),
+//                       )
 //                       // Page indicator dots - only show if more than one image
 //                       if (serviceImages.length > 1)
 //                         Positioned(
@@ -506,8 +539,8 @@
 //                   children: [
 //                     OutlinedButton.icon(
 //                       onPressed: _navigateToChat,
-//                       icon: Icon(Icons.message, size: 16,color: Color(0xff0F3966),),
-//                       label: Text('Message',style: TextStyle(color: Color(0xff0F3966),fontWeight: FontWeight.bold,fontSize: 16),),
+//                       icon: Icon(Icons.message, size: 16, color: Color(0xff0F3966)),
+//                       label: Text('Message', style: TextStyle(color: Color(0xff0F3966), fontWeight: FontWeight.bold, fontSize: 16)),
 //                       style: OutlinedButton.styleFrom(
 //                         foregroundColor: Color(0xff0F3966),
 //                         side: BorderSide(color: Color(0xff0F3966)),
@@ -519,9 +552,7 @@
 //                     ),
 //                     SizedBox(width: 12),
 //                     ElevatedButton(
-//                       onPressed: () {
-//                         // Handle hiring process
-//                       },
+//                       onPressed: _navigateToBooking, // Updated to use the new navigation method
 //                       style: ElevatedButton.styleFrom(
 //                         backgroundColor: Color(0xff0F3966),
 //                         foregroundColor: Colors.white,
@@ -550,13 +581,12 @@
 //   }
 // }
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fixit/features/user/view/service_booking_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'message_provider_page.dart';
-
-
 
 class ViewServiceDetailsPage extends StatefulWidget {
   final String serviceId;
@@ -573,36 +603,41 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
   Map<String, dynamic>? providerData;
   bool isLoading = true;
   int currentImageIndex = 0;
-  final pageController = PageController();
+  final PageController pageController = PageController();
   bool showFullDescription = false;
   List<String> serviceImages = [];
+  bool isProviderFavorite = false;
+  String? providerId;
+  Set<String> _favoriteServiceIds = {};
 
   @override
   void initState() {
     super.initState();
     _fetchServiceDetails();
+    _fetchUserFavorites();
   }
 
   Future<void> _fetchServiceDetails() async {
     try {
-      // Fetch service details
       DocumentSnapshot serviceDoc =
       await _firestore.collection('services').doc(widget.serviceId).get();
 
       if (serviceDoc.exists) {
         serviceData = serviceDoc.data() as Map<String, dynamic>;
 
-        // Initialize service images array
+        if (serviceData!.containsKey('provider_id')) {
+          providerId = serviceData!['provider_id'];
+          isProviderFavorite = _favoriteServiceIds.contains(widget.serviceId);
+        }
+
         serviceImages = [];
 
-        // Add work sample if exists
         if (serviceData!.containsKey('work_sample') &&
             serviceData!['work_sample'] != null &&
             serviceData!['work_sample'].toString().isNotEmpty) {
           serviceImages.add(serviceData!['work_sample']);
         }
 
-        // Add additional work samples if they exist
         if (serviceData!.containsKey('additional_work_samples') &&
             serviceData!['additional_work_samples'] is List &&
             (serviceData!['additional_work_samples'] as List).isNotEmpty) {
@@ -613,16 +648,14 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
           }
         }
 
-        // If no images at all, add a placeholder
         if (serviceImages.isEmpty) {
           serviceImages.add('https://via.placeholder.com/400?text=No+Images');
         }
 
-        // Fetch provider details
-        if (serviceData!.containsKey('provider_id')) {
+        if (providerId != null) {
           DocumentSnapshot providerDoc = await _firestore
               .collection('service provider')
-              .doc(serviceData!['provider_id'])
+              .doc(providerId)
               .get();
 
           if (providerDoc.exists) {
@@ -638,6 +671,58 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
           isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchUserFavorites() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (userDoc.exists && userDoc.data() != null) {
+        var userData = userDoc.data() as Map<String, dynamic>;
+        if (userData.containsKey('favorites') && userData['favorites'] is List) {
+          setState(() {
+            _favoriteServiceIds = Set<String>.from(userData['favorites'] as List);
+            isProviderFavorite = _favoriteServiceIds.contains(widget.serviceId);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user favorites: $e');
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      bool isCurrentlyFavorite = _favoriteServiceIds.contains(widget.serviceId);
+      Set<String> newFavorites = Set<String>.from(_favoriteServiceIds);
+
+      if (isCurrentlyFavorite) {
+        newFavorites.remove(widget.serviceId);
+      } else {
+        newFavorites.add(widget.serviceId);
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .update({'favorites': newFavorites.toList()});
+
+      setState(() {
+        _favoriteServiceIds = newFavorites;
+        isProviderFavorite = !isCurrentlyFavorite;
+      });
+    } catch (e) {
+      print('Error toggling favorite: $e');
     }
   }
 
@@ -681,12 +766,12 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
   }
 
   void _navigateToChat() {
-    if (serviceData != null && providerData != null) {
+    if (serviceData != null && providerData != null && providerId != null) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ChatPage(
-            providerId: serviceData!['provider_id'],
+            providerId: providerId!,
             providerName: providerData!['name'] ?? 'Service Provider',
             providerImage: providerData!['profileImage'] ?? '',
             serviceId: widget.serviceId,
@@ -701,7 +786,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
     }
   }
 
-  // Navigate to the booking page
   void _navigateToBooking() {
     if (serviceData != null && providerData != null) {
       Navigator.push(
@@ -724,7 +808,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate average rating
     double avgRating = 0.0;
     int ratingCount = 0;
     if (serviceData != null) {
@@ -737,7 +820,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
     String serviceName = serviceData?['name'] ?? 'Service';
     String experience = serviceData?['experience']?.toString() ?? '0';
 
-    // Get available areas and days
     List<dynamic> availableAreas = serviceData?['available_areas'] ?? [];
     List<dynamic> availableDays = serviceData?['available_days'] ?? [];
 
@@ -754,7 +836,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Image slider with back and more buttons
                   Stack(
                     children: [
                       Container(
@@ -787,7 +868,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                           },
                         ),
                       ),
-                      // Navigation buttons
                       Positioned(
                         top: MediaQuery.of(context).padding.top + 8,
                         left: 16,
@@ -796,7 +876,8 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                           radius: 22,
                           child: IconButton(
                             icon: Icon(Icons.arrow_back_ios_new, size: 18),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.pop(context, true), // when a favorite is added/removed
+
                             color: Colors.black,
                           ),
                         ),
@@ -804,17 +885,19 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                       Positioned(
                         top: MediaQuery.of(context).padding.top + 8,
                         right: 16,
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white,
-                          radius: 22,
-                          child: IconButton(
-                            icon: Icon(Icons.more_horiz, size: 18),
-                            onPressed: () {},
-                            color: Colors.black,
+                        child: GestureDetector(
+                          onTap: _toggleFavorite,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.white70,
+                            radius: 22,
+                            child: Icon(
+                              isProviderFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isProviderFavorite ? Colors.red : Colors.grey,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ),
-                      // Page indicator dots - only show if more than one image
                       if (serviceImages.length > 1)
                         Positioned(
                           bottom: 16,
@@ -838,7 +921,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                             ),
                           ),
                         ),
-                      // Service provider profile picture
                       Positioned(
                         bottom: 20,
                         right: 24,
@@ -884,14 +966,11 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                       ),
                     ],
                   ),
-
-                  // Profile info
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -917,7 +996,7 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                                   ),
                                 ),
                                 Text(
-                                  ' (${ratingCount})',
+                                  ' ($ratingCount)',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey,
@@ -929,13 +1008,12 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          '$serviceName • ${experience} year Experience',
+                          '$serviceName • $experience year Experience',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
                           ),
                         ),
-
                         SizedBox(height: 24),
                         Text(
                           'About me',
@@ -972,18 +1050,11 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                             ),
                           ),
                         ),
-
-                        // Available Areas Section
                         if (availableAreas.isNotEmpty)
                           _buildInfoSection('Available Areas', availableAreas),
-
-                        // Available Days Section
                         if (availableDays.isNotEmpty)
                           _buildInfoSection('Available Days', availableDays),
-
                         SizedBox(height: 24),
-
-                        // Reviews section
                         Text(
                           'Review',
                           style: TextStyle(
@@ -993,8 +1064,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                           ),
                         ),
                         SizedBox(height: 8),
-
-                        // Stars
                         Row(
                           children: List.generate(5, (index) {
                             return Icon(
@@ -1005,8 +1074,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                           }),
                         ),
                         SizedBox(height: 8),
-
-                        // Review text
                         Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -1045,8 +1112,6 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
               ),
             ),
           ),
-
-          // Bottom hire section
           Container(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
@@ -1094,7 +1159,7 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                     ),
                     SizedBox(width: 12),
                     ElevatedButton(
-                      onPressed: _navigateToBooking, // Updated to use the new navigation method
+                      onPressed: _navigateToBooking,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xff0F3966),
                         foregroundColor: Colors.white,
@@ -1106,7 +1171,7 @@ class _ViewServiceDetailsPageState extends State<ViewServiceDetailsPage> {
                       child: Text(
                         'Book Now',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),

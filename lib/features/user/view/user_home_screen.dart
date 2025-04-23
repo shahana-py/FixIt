@@ -1545,7 +1545,6 @@
 //   }
 // }
 
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fixit/core/utils/custom_texts/Sub_text.dart';
@@ -1558,7 +1557,6 @@ import 'package:fixit/features/user/view/view_service_details_page.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/custom_widgets/service_category_card.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1581,6 +1579,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _services = [];
 
   bool _isLoading = true;
+  Set<String> _favoriteServiceIds = {};
 
   @override
   void initState() {
@@ -1590,6 +1589,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchOffers();
     _fetchCategories();
     _fetchServices();
+    _fetchUserFavorites();
   }
 
   Future<void> _fetchUserName() async {
@@ -1696,9 +1696,6 @@ class _HomeScreenState extends State<HomeScreen> {
         services.add({
           'id': doc.id,
           'name': data['name'] ?? '',
-          // 'hourly_rate': data['hourly_rate'] ?? 0,
-          // 'rating': data['rating'] ?? 0,
-          // 'rating_count': data['rating_count'] ?? 0,
           'hourly_rate': _parseNumber(data['hourly_rate']),
           'rating': _parseNumber(data['rating']),
           'rating_count': _parseNumber(data['rating_count']),
@@ -1775,6 +1772,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _markNotificationsAsRead();
     await Navigator.pushNamed(context, '/usernotificationpage');
   }
+
   num _parseNumber(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value;
@@ -1784,6 +1782,57 @@ class _HomeScreenState extends State<HomeScreen> {
       return num.tryParse(cleanedValue) ?? 0;
     }
     return 0;
+  }
+
+  Future<void> _fetchUserFavorites() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      // Get user's favorite service IDs
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (userDoc.exists && userDoc.data() is Map<String, dynamic>) {
+        var userData = userDoc.data() as Map<String, dynamic>;
+        if (userData.containsKey('favorites') && userData['favorites'] is List) {
+          setState(() {
+            _favoriteServiceIds = Set<String>.from(userData['favorites'] as List);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user favorites: $e');
+    }
+  }
+
+  Future<void> _toggleFavorite(String serviceId) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      bool isCurrentlyFavorite = _favoriteServiceIds.contains(serviceId);
+      Set<String> newFavorites = Set<String>.from(_favoriteServiceIds);
+
+      if (isCurrentlyFavorite) {
+        newFavorites.remove(serviceId);
+      } else {
+        newFavorites.add(serviceId);
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .update({'favorites': newFavorites.toList()});
+
+      setState(() {
+        _favoriteServiceIds = newFavorites;
+      });
+    } catch (e) {
+      print('Error toggling favorite: $e');
+    }
   }
 
   @override
@@ -1820,9 +1869,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          GestureDetector(onTap: (){
-            Navigator.pushNamed(context, '/userfavouritespage');
-          },child: Icon(Icons.favorite, color: Colors.white, size: 24)),
+          GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, '/userfavouritespage');
+              },
+              child: Icon(Icons.favorite, color: Colors.white, size: 24)
+          ),
           SizedBox(width: 10),
 
           // Notifications with unread count
@@ -2083,13 +2135,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         name: service['provider_name'],
                         service: service['name'],
                         networkImage: service['provider_image'],
-                        // rating: service['rating'].toDouble(),
-                        // ratingCount: service['rating_count'],
-                        // hourlyRate: service['hourly_rate'],
-                        rating: service['rating'].toDouble(), // Ensure double
-                        ratingCount: service['rating_count'].toInt(), // Ensure int
-                        hourlyRate: service['hourly_rate'].toInt(), // Ensure int
-                        distance: "Nearby", // For demo purposes
+                        rating: service['rating'].toDouble(),
+                        ratingCount: service['rating_count'].toInt(),
+                        hourlyRate: service['hourly_rate'].toInt(),
+                        distance: "Nearby",
                         providerId: service['provider_id'] ?? '');
                   }).toList(),
                 ),
@@ -2131,7 +2180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       rating: 4.9,
                       hourlyRate: 500,
                       serviceId: "dummy_service_id",
-                      // Add navigation to a dummy service page or show a message
+                      isFavorite: false,
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('No service details available')),
@@ -2144,59 +2193,38 @@ class _HomeScreenState extends State<HomeScreen> {
                       name: service['provider_name'],
                       service: service['name'],
                       networkImage: service['work_sample'],
-                      rating: service['rating'].toDouble(), // Ensure double
-                      hourlyRate: service['hourly_rate'].toInt(), // Ensure int
+                      rating: service['rating'].toDouble(),
+                      hourlyRate: service['hourly_rate'].toInt(),
                       serviceId: service['id'] ?? '',
-                      // Add navigation to the service details page
-                      onTap: () {
-                        Navigator.push(
+                      isFavorite: _favoriteServiceIds.contains(service['id']),
+                      onTap: () async {
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ViewServiceDetailsPage(
-                              serviceId: service['id'] ?? '',
-                            ),
+                            builder: (context) => ViewServiceDetailsPage(serviceId: service['id'] ?? '',),
                           ),
                         );
+
+                        // Refresh state if favorite status changed
+                        if (result == true) {
+                          setState(() {});
+                        }
                       },
+
+                      // onTap: () {
+                      //   Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => ViewServiceDetailsPage(
+                      //         serviceId: service['id'] ?? '',
+                      //       ),
+                      //     ),
+                      //   );
+                      // },
                     );
                   }
                 },
               )
-              // GridView.builder(
-              //   padding: EdgeInsets.all(10),
-              //   shrinkWrap: true,
-              //   physics: NeverScrollableScrollPhysics(),
-              //   itemCount: _services.isEmpty ? 6 : _services.length,
-              //   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              //     crossAxisCount: 2,
-              //     mainAxisSpacing: 10,
-              //     crossAxisSpacing: 10,
-              //     childAspectRatio: 0.7,
-              //   ),
-              //   itemBuilder: (context, index) {
-              //     if (_services.isEmpty) {
-              //       // Fallback service card if no data available
-              //       return _buildServiceCard(
-              //           name: "John",
-              //           service: "Plumbing",
-              //           imagePath: "assets/images/Jhon_plumber5.jpeg",
-              //           rating: 4.9,
-              //           hourlyRate: 500,
-              //           serviceId: "dummy_service_id");
-              //     } else {
-              //       final service = _services[index];
-              //       return _buildServiceCard(
-              //           name: service['provider_name'],
-              //           service: service['name'],
-              //           networkImage: service['work_sample'],
-              //           // rating: service['rating'].toDouble(),
-              //           // hourlyRate: service['hourly_rate'],
-              //           rating: service['rating'].toDouble(), // Ensure double
-              //           hourlyRate: service['hourly_rate'].toInt(), // Ensure int
-              //           serviceId: service['id'] ?? '');
-              //     }
-              //   },
-              // )
             ],
           ),
         ),
@@ -2210,11 +2238,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required String service,
     String? imagePath,
     String? networkImage,
-    // required double rating,
-    // required int ratingCount,
-    // required int hourlyRate,
-    required num rating,  // Changed from double to num
-    required num ratingCount,  // Changed from int to num
+    required num rating,
+    required num ratingCount,
     required num hourlyRate,
     required String distance,
     required String providerId,
@@ -2354,11 +2379,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required num rating,
     required num hourlyRate,
     required String serviceId,
-    // Add the onTap parameter
+    required bool isFavorite,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      // Add onTap handler to the entire card
       onTap: onTap,
       child: Card(
         elevation: 3,
@@ -2398,16 +2422,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   right: 8,
                   child: GestureDetector(
                     onTap: () {
-                      setState(() {
-                        _favoriteServices[serviceId] = !(_favoriteServices[serviceId] ?? false);
-                      });
+                      _toggleFavorite(serviceId);
                     },
                     child: CircleAvatar(
                       backgroundColor: Colors.white70,
                       radius: 16,
                       child: Icon(
-                        (_favoriteServices[serviceId] ?? false) ? Icons.favorite : Icons.favorite_border,
-                        color: (_favoriteServices[serviceId] ?? false) ? Colors.red : Colors.grey,
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? Colors.red : Colors.grey,
                         size: 18,
                       ),
                     ),
@@ -2478,132 +2500,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-  // Widget _buildServiceCard({
-  //   required String name,
-  //   required String service,
-  //   String? imagePath,
-  //   String? networkImage,
-  //   // required double rating,
-  //   // required int hourlyRate,
-  //   required num rating,  // Changed from double to num
-  //   required num hourlyRate,
-  //   required String serviceId,
-  // }) {
-  //   return Card(
-  //     elevation: 3,
-  //     shape: RoundedRectangleBorder(
-  //       borderRadius: BorderRadius.circular(20),
-  //     ),
-  //     child: Column(
-  //       children: [
-  //         Stack(
-  //           children: [
-  //             ClipRRect(
-  //               borderRadius:
-  //               BorderRadius.vertical(top: Radius.circular(20)),
-  //               child: networkImage != null && networkImage.isNotEmpty
-  //                   ? Image.network(
-  //                 networkImage,
-  //                 height: 175,
-  //                 width: double.infinity,
-  //                 fit: BoxFit.cover,
-  //                 errorBuilder: (context, error, stackTrace) =>
-  //                     Image.asset(
-  //                       imagePath ?? "assets/images/Jhon_plumber5.jpeg",
-  //                       height: 175,
-  //                       width: double.infinity,
-  //                       fit: BoxFit.cover,
-  //                     ),
-  //               )
-  //                   : Image.asset(
-  //                 imagePath ?? "assets/images/Jhon_plumber5.jpeg",
-  //                 height: 175,
-  //                 width: double.infinity,
-  //                 fit: BoxFit.cover,
-  //               ),
-  //             ),
-  //             Positioned(
-  //               top: 8,
-  //               right: 8,
-  //               child: GestureDetector(
-  //                 onTap: () {
-  //                   setState(() {
-  //                     _favoriteServices[serviceId] = !(_favoriteServices[serviceId] ?? false);
-  //                   });
-  //                 },
-  //                 child: CircleAvatar(
-  //                   backgroundColor: Colors.white70,
-  //                   radius: 16,
-  //                   child: Icon(
-  //                     (_favoriteServices[serviceId] ?? false) ? Icons.favorite : Icons.favorite_border,
-  //                     color: (_favoriteServices[serviceId] ?? false) ? Colors.red : Colors.grey,
-  //                     size: 18,
-  //                   ),
-  //                 ),
-  //               ),
-  //             )
-  //           ],
-  //         ),
-  //         Padding(
-  //           padding:
-  //           const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-  //           child: Column(
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               Row(
-  //                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                 children: [
-  //                   Column(
-  //                     crossAxisAlignment: CrossAxisAlignment.start,
-  //                     children: [
-  //                       Text(
-  //                         name,
-  //                         style: TextStyle(
-  //                           fontWeight: FontWeight.bold,
-  //                           color: Color(0xff0F3966),
-  //                           fontSize: 16,
-  //                         ),
-  //                       ),
-  //                       SizedBox(height: 2),
-  //                       Text(service,
-  //                           style: TextStyle(color: Colors.black54)),
-  //                     ],
-  //                   ),
-  //                   Container(
-  //                     padding: EdgeInsets.all(4),
-  //                     width: 47,
-  //                     height: 25,
-  //                     decoration: BoxDecoration(
-  //                         color: Colors.green[700],
-  //                         borderRadius: BorderRadius.circular(20)),
-  //                     child: Row(
-  //                       children: [
-  //                         Icon(Icons.star, color: Colors.white, size: 16),
-  //                         SizedBox(width: 4),
-  //                         Text("${rating.toDouble()}",
-  //                             style: TextStyle(
-  //                                 color: Colors.white, fontSize: 12)),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //               SizedBox(height: 6),
-  //               Row(
-  //                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                 children: [
-  //                   Text("₹${hourlyRate.toInt()}/hr",
-  //                       style: TextStyle(
-  //                           color: Color(0xff0F3966),
-  //                           fontWeight: FontWeight.w600,
-  //                           fontSize: 13)),
-  //                 ],
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 }
