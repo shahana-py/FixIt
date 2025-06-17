@@ -1,7 +1,16 @@
+//
 // import 'package:flutter/material.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:intl/intl.dart';
+// import 'dart:io';
+// import 'package:url_launcher/url_launcher.dart';
+// import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+//
+// import '../../../core/shared/services/image_service.dart';
+//
+// // Import your ImageService
+//
 //
 // class MessageClientPage extends StatefulWidget {
 //   final String clientId;
@@ -9,6 +18,7 @@
 //   final String clientImage;
 //   final String serviceId;
 //   final String serviceName;
+//   final String? clientPhone; // Added client phone parameter
 //
 //   const MessageClientPage({
 //     Key? key,
@@ -17,6 +27,7 @@
 //     required this.clientImage,
 //     required this.serviceId,
 //     required this.serviceName,
+//     this.clientPhone, // Optional parameter for client's phone number
 //   }) : super(key: key);
 //
 //   @override
@@ -28,10 +39,15 @@
 //   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 //   final FirebaseAuth _auth = FirebaseAuth.instance;
 //   final ScrollController _scrollController = ScrollController();
+//   final ImageService _imageService = ImageService(); // Initialize image service
+//
 //   late String _chatId;
 //   late String _providerId;
 //   bool _isLoading = true;
+//   bool _isAttachingImage = false;
 //   List<DocumentSnapshot> _messages = [];
+//   File? _imageFile;
+//   String? _imageUrl;
 //
 //   @override
 //   void initState() {
@@ -70,7 +86,15 @@
 //           'serviceId': widget.serviceId,
 //           'serviceName': widget.serviceName,
 //           'createdAt': FieldValue.serverTimestamp(),
+//           'hiddenForProviders': [], // Initialize list for tracking provider-hidden messages
 //         });
+//       } else {
+//         // Make sure the 'hiddenForProviders' field exists
+//         if (!(chatDoc.data() as Map<String, dynamic>).containsKey('hiddenForProviders')) {
+//           await _firestore.collection('chats').doc(_chatId).update({
+//             'hiddenForProviders': [],
+//           });
+//         }
 //       }
 //
 //       setState(() {
@@ -116,37 +140,101 @@
 //     }
 //   }
 //
-//   void _sendMessage() async {
-//     if (_messageController.text.trim().isEmpty) return;
-//
+//   void _sendMessage({String? imageUrl}) async {
 //     String messageText = _messageController.text.trim();
+//
+//     // Check if there's text or image to send
+//     if (messageText.isEmpty && imageUrl == null) return;
+//
 //     _messageController.clear();
+//     setState(() {
+//       _imageFile = null;
+//       _imageUrl = null;
+//       _isAttachingImage = false;
+//     });
 //
 //     try {
-//       // Add message
-//       await _firestore.collection('chats').doc(_chatId).collection('messages').add({
-//         'text': messageText,
+//       // Prepare message data
+//       Map<String, dynamic> messageData = {
 //         'senderId': _providerId,
 //         'receiverId': widget.clientId,
 //         'timestamp': FieldValue.serverTimestamp(),
 //         'isRead': false,
-//       });
+//       };
+//
+//       // Add text if provided
+//       if (messageText.isNotEmpty) {
+//         messageData['text'] = messageText;
+//       }
+//
+//       // Add image URL if provided
+//       if (imageUrl != null) {
+//         messageData['imageUrl'] = imageUrl;
+//         messageData['type'] = 'image';
+//       } else {
+//         messageData['type'] = 'text';
+//       }
+//
+//       // Add message to Firestore
+//       await _firestore.collection('chats').doc(_chatId).collection('messages').add(messageData);
 //
 //       // Update chat with last message
-//       await _firestore.collection('chats').doc(_chatId).update({
-//         'lastMessage': messageText,
+//       Map<String, dynamic> chatUpdate = {
 //         'lastMessageTime': FieldValue.serverTimestamp(),
-//         // Increment unread count for the client
 //         'unreadCount_${widget.clientId}': FieldValue.increment(1),
-//       });
+//       };
+//
+//       // Set the last message preview
+//       if (imageUrl != null && messageText.isEmpty) {
+//         chatUpdate['lastMessage'] = '📷 Image';
+//       } else if (imageUrl != null) {
+//         chatUpdate['lastMessage'] = '$messageText 📷';
+//       } else {
+//         chatUpdate['lastMessage'] = messageText;
+//       }
+//
+//       await _firestore.collection('chats').doc(_chatId).update(chatUpdate);
 //
 //       // Scroll to bottom after sending
 //       _scrollToBottom();
 //     } catch (e) {
 //       print('Error sending message: $e');
 //       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(content: Text('Failed to send message. Please try again.')),
+//         const SnackBar(content: Text('Failed to send message. Please try again.')),
 //       );
+//     }
+//   }
+//
+//   Future<void> _sendImageMessage() async {
+//     if (_imageFile == null) return;
+//
+//     setState(() {
+//       _isAttachingImage = true;
+//     });
+//
+//     try {
+//       // Upload the image
+//       String? imageUrl = await _imageService.uploadImageWorking(_imageFile!, _chatId);
+//
+//       if (imageUrl != null) {
+//         // Send the message with the image URL
+//         _sendMessage(imageUrl: imageUrl);
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text('Failed to upload image. Please try again.')),
+//         );
+//         setState(() {
+//           _isAttachingImage = false;
+//         });
+//       }
+//     } catch (e) {
+//       print('Error uploading image: $e');
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text('Failed to upload image. Please try again.')),
+//       );
+//       setState(() {
+//         _isAttachingImage = false;
+//       });
 //     }
 //   }
 //
@@ -162,29 +250,70 @@
 //     }
 //   }
 //
+//
+//
+//   Future<void> _makePhoneCall(String clientPhone) async {
+//     final Uri launchUri = Uri(
+//       scheme: 'tel',
+//       path: clientPhone,
+//     );
+//     if (await canLaunchUrl(launchUri)) {
+//       await launchUrl(launchUri);
+//     } else {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text('Could not launch phone dialer'),
+//           backgroundColor: Colors.red,
+//         ),
+//       );
+//     }
+//   }
+//
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
 //       appBar: AppBar(
-//         backgroundColor:  Color(0xff0F3966),
+//         backgroundColor: Color(0xff0F3966),
 //         iconTheme: IconThemeData(color: Colors.white),
 //         elevation: 1,
 //         leading: IconButton(
-//           icon: Icon(Icons.arrow_back, ),
+//           icon: Icon(Icons.arrow_back),
 //           onPressed: () => Navigator.pop(context),
 //         ),
 //         title: Row(
 //           children: [
-//             CircleAvatar(
-//               radius: 20,
-//               backgroundImage: widget.clientImage.isNotEmpty
-//                   ? NetworkImage(widget.clientImage)
-//                   : null,
-//               child: widget.clientImage.isEmpty
-//                   ? Icon(Icons.person, color: Colors.blue[300])
-//                   : null,
+//             FutureBuilder<String?>(
+//               future: _getClientProfileImage(),
+//               builder: (context, snapshot) {
+//                 if (snapshot.connectionState == ConnectionState.waiting) {
+//                   return CircleAvatar(
+//                     radius: 20,
+//                     backgroundColor: Colors.grey[300],
+//                     child: CircularProgressIndicator(
+//                       color: Colors.white,
+//                       strokeWidth: 2,
+//                     ),
+//                   );
+//                 }
+//
+//                 final imageUrl = snapshot.data;
+//                 return CircleAvatar(
+//                   radius: 20,
+//                   backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+//                   child: imageUrl == null
+//                       ? Text(
+//                     widget.clientName.isNotEmpty ? widget.clientName[0].toUpperCase() : '?',
+//                     style: TextStyle(
+//                       color: Colors.white,
+//                       fontSize: 18,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   )
+//                       : null,
+//                 );
+//               },
 //             ),
-//             SizedBox(width: 10),
+//             SizedBox(width: 5),
 //             Expanded(
 //               child: Column(
 //                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,24 +327,19 @@
 //                     ),
 //                     overflow: TextOverflow.ellipsis,
 //                   ),
-//
 //                 ],
 //               ),
 //             ),
 //           ],
 //         ),
 //         actions: [
+//           if (widget.clientPhone != null)
+//             IconButton(
+//               icon: Icon(Icons.call),
+//               onPressed: () => _callClient(),
+//             ),
 //           IconButton(
-//             icon: Icon(Icons.call, ),
-//             onPressed: () {
-//               // Implement call functionality
-//               ScaffoldMessenger.of(context).showSnackBar(
-//                 SnackBar(content: Text('Call feature coming soon')),
-//               );
-//             },
-//           ),
-//           IconButton(
-//             icon: Icon(Icons.more_vert, ),
+//             icon: Icon(Icons.more_vert),
 //             onPressed: () {
 //               _showOptionsMenu(context);
 //             },
@@ -276,26 +400,111 @@
 //                   );
 //                 }
 //
-//                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+//                 // Check for hidden messages for this provider
+//                 return StreamBuilder<DocumentSnapshot>(
+//                   stream: _firestore.collection('chats').doc(_chatId).snapshots(),
+//                   builder: (context, chatSnapshot) {
+//                     if (!chatSnapshot.hasData) {
+//                       return Center(child: CircularProgressIndicator());
+//                     }
 //
-//                 return ListView.builder(
-//                   controller: _scrollController,
-//                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//                   itemCount: _messages.length,
-//                   itemBuilder: (context, index) {
-//                     final message = _messages[index].data() as Map<String, dynamic>;
-//                     final isMe = message['senderId'] == _providerId;
-//                     final timestamp = message['timestamp'] as Timestamp?;
-//                     final time = timestamp != null
-//                         ? DateFormat('hh:mm a').format(timestamp.toDate())
-//                         : '';
+//                     List<String> hiddenMessages = [];
 //
-//                     return _buildMessageBubble(message, isMe, time);
+//                     // Get hidden messages for this provider
+//                     if (chatSnapshot.data!.exists) {
+//                       Map<String, dynamic> chatData = chatSnapshot.data!.data() as Map<String, dynamic>;
+//                       if (chatData.containsKey('hiddenForProviders') &&
+//                           chatData['hiddenForProviders'] is List) {
+//                         hiddenMessages = List<String>.from(chatData['hiddenForProviders']);
+//                       }
+//                     }
+//
+//                     // Filter out hidden messages
+//                     List<DocumentSnapshot> visibleMessages = _messages.where((message) {
+//                       return !hiddenMessages.contains(message.id);
+//                     }).toList();
+//
+//                     if (visibleMessages.isEmpty) {
+//                       return Center(
+//                         child: Column(
+//                           mainAxisAlignment: MainAxisAlignment.center,
+//                           children: [
+//                             Icon(
+//                               Icons.chat_bubble_outline,
+//                               size: 80,
+//                               color: Colors.grey[300],
+//                             ),
+//                             SizedBox(height: 16),
+//                             Text(
+//                               'No messages to display',
+//                               style: TextStyle(
+//                                 color: Colors.grey[600],
+//                                 fontSize: 16,
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       );
+//                     }
+//
+//                     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+//
+//                     return ListView.builder(
+//                       controller: _scrollController,
+//                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//                       itemCount: visibleMessages.length,
+//                       itemBuilder: (context, index) {
+//                         final message = visibleMessages[index].data() as Map<String, dynamic>;
+//                         final isMe = message['senderId'] == _providerId;
+//                         final timestamp = message['timestamp'] as Timestamp?;
+//                         final time = timestamp != null
+//                             ? DateFormat('hh:mm a').format(timestamp.toDate())
+//                             : '';
+//
+//                         return _buildMessageBubble(message, isMe, time);
+//                       },
+//                     );
 //                   },
 //                 );
 //               },
 //             ),
 //           ),
+//           if (_isAttachingImage)
+//             Container(
+//               padding: EdgeInsets.all(8),
+//               color: Colors.grey[200],
+//               child: Column(
+//                 children: [
+//                   ClipRRect(
+//                     borderRadius: BorderRadius.circular(8),
+//                     child: Image.file(
+//                       _imageFile!,
+//                       height: 120,
+//                       width: 120,
+//                       fit: BoxFit.cover,
+//                     ),
+//                   ),
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.center,
+//                     children: [
+//                       IconButton(
+//                         icon: Icon(Icons.close, color: Colors.red),
+//                         onPressed: () {
+//                           setState(() {
+//                             _imageFile = null;
+//                             _isAttachingImage = false;
+//                           });
+//                         },
+//                       ),
+//                       IconButton(
+//                         icon: Icon(Icons.send, color: Color(0xff0F3966)),
+//                         onPressed: _sendImageMessage,
+//                       ),
+//                     ],
+//                   ),
+//                 ],
+//               ),
+//             ),
 //           _buildMessageInput(),
 //         ],
 //       ),
@@ -303,6 +512,9 @@
 //   }
 //
 //   Widget _buildMessageBubble(Map<String, dynamic> message, bool isMe, String time) {
+//     // Get message type
+//     String type = message['type'] ?? 'text';
+//
 //     return Align(
 //       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
 //       child: Container(
@@ -321,13 +533,61 @@
 //         child: Column(
 //           crossAxisAlignment: CrossAxisAlignment.end,
 //           children: [
-//             Text(
-//               message['text'],
-//               style: TextStyle(
-//                 color: isMe ?  Colors.black87: Colors.black87,
-//                 fontSize: 16,
+//             // Show message content based on type
+//             if (type == 'image')
+//               Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   ClipRRect(
+//                     borderRadius: BorderRadius.circular(8),
+//                     child: Image.network(
+//                       message['imageUrl'],
+//                       fit: BoxFit.cover,
+//                       width: double.infinity,
+//                       loadingBuilder: (context, child, loadingProgress) {
+//                         if (loadingProgress == null) return child;
+//                         return Container(
+//                           height: 150,
+//                           child: Center(
+//                             child: CircularProgressIndicator(
+//                               value: loadingProgress.expectedTotalBytes != null
+//                                   ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+//                                   : null,
+//                             ),
+//                           ),
+//                         );
+//                       },
+//                       errorBuilder: (context, error, stackTrace) => Container(
+//                         height: 100,
+//                         width: double.infinity,
+//                         color: Colors.grey[300],
+//                         child: Icon(Icons.broken_image, size: 40),
+//                       ),
+//                     ),
+//                   ),
+//                   if (message['text'] != null && message['text'].isNotEmpty)
+//                     Padding(
+//                       padding: const EdgeInsets.only(top: 8.0),
+//                       child: Text(
+//                         message['text'],
+//                         style: TextStyle(
+//                           color: Colors.black87,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                     ),
+//                 ],
 //               ),
-//             ),
+//
+//             if (type != 'image' && message['text'] != null)
+//               Text(
+//                 message['text'],
+//                 style: TextStyle(
+//                   color: Colors.black87,
+//                   fontSize: 16,
+//                 ),
+//               ),
+//
 //             SizedBox(height: 2),
 //             Row(
 //               mainAxisSize: MainAxisSize.min,
@@ -335,7 +595,7 @@
 //                 Text(
 //                   time,
 //                   style: TextStyle(
-//                     color: isMe ?  Colors.grey[600]: Colors.grey[600],
+//                     color: Colors.grey[600],
 //                     fontSize: 10,
 //                   ),
 //                 ),
@@ -346,7 +606,10 @@
 //                         ? Icons.done_all
 //                         : Icons.done,
 //                     size: 14,
-//                     color: Colors.grey[600],
+//                     color: message['isRead'] == true
+//                     ? Colors.green
+//                     : Colors.grey[600]
+//
 //                   ),
 //               ],
 //             ),
@@ -373,11 +636,15 @@
 //         children: [
 //           IconButton(
 //             icon: Icon(Icons.attach_file, color: Color(0xFF344D67)),
-//             onPressed: () {
-//               // Implement file attachment
-//               ScaffoldMessenger.of(context).showSnackBar(
-//                 SnackBar(content: Text('Attachment feature coming soon')),
-//               );
+//             onPressed: () async {
+//               // Show image picker
+//               final File? pickedImage = await _imageService.showImagePickerDialog(context);
+//               if (pickedImage != null) {
+//                 setState(() {
+//                   _imageFile = pickedImage;
+//                   _isAttachingImage = true;
+//                 });
+//               }
 //             },
 //           ),
 //           Expanded(
@@ -404,12 +671,62 @@
 //             backgroundColor: Color(0xff0F3966),
 //             child: IconButton(
 //               icon: Icon(Icons.send, color: Colors.white),
-//               onPressed: _sendMessage,
+//               onPressed: () => _imageFile != null ? _sendImageMessage() : _sendMessage(),
 //             ),
 //           ),
 //         ],
 //       ),
 //     );
+//   }
+//
+//   Future<String?> _getClientProfileImage() async {
+//     if (widget.clientImage != null && widget.clientImage!.isNotEmpty) {
+//       return widget.clientImage;
+//     }
+//
+//     // Fallback to fetching from Firestore if not provided
+//     try {
+//       final doc = await _firestore.collection('users').doc(widget.clientId).get();
+//       if (doc.exists) {
+//         final data = doc.data() as Map<String, dynamic>;
+//         return data['profileImageUrl'] as String?;
+//       }
+//     } catch (e) {
+//       print('Error fetching client profile image: $e');
+//     }
+//
+//     return null;
+//   }
+//
+//
+//   Future<void> _callClient() async {
+//     if (widget.clientPhone == null || widget.clientPhone!.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Client phone number not available')),
+//       );
+//       return;
+//     }
+//
+//     try {
+//       bool? callResult = await FlutterPhoneDirectCaller.callNumber(widget.clientPhone!);
+//
+//       if (callResult != true) {
+//         final Uri launchUri = Uri(
+//           scheme: 'tel',
+//           path: widget.clientPhone,
+//         );
+//         if (await canLaunchUrl(launchUri)) {
+//           await launchUrl(launchUri);
+//         } else {
+//           throw 'Could not launch $launchUri';
+//         }
+//       }
+//     } catch (e) {
+//       print('Error making phone call: $e');
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Could not make the call. Please try again.')),
+//       );
+//     }
 //   }
 //
 //   void _showOptionsMenu(BuildContext context) {
@@ -424,7 +741,6 @@
 //           child: Column(
 //             mainAxisSize: MainAxisSize.min,
 //             children: [
-//
 //               ListTile(
 //                 leading: Icon(Icons.report_problem, color: Colors.orange),
 //                 title: Text('Report Client'),
@@ -442,7 +758,7 @@
 //                 },
 //               ),
 //               ListTile(
-//                 leading: Icon(Icons.delete_outline, color: Colors.red),
+//                 leading: Icon(Icons.delete, color: Colors.red),
 //                 title: Text('Clear Chat History'),
 //                 onTap: () {
 //                   Navigator.pop(context);
@@ -548,7 +864,7 @@
 //       context: context,
 //       builder: (context) => AlertDialog(
 //         title: Text('Clear Chat History'),
-//         content: Text('Are you sure you want to clear the chat history? This action cannot be undone.'),
+//         content: Text('This will clear the chat history only for you. The client will still see all messages.'),
 //         actions: [
 //           TextButton(
 //             onPressed: () => Navigator.pop(context),
@@ -556,7 +872,6 @@
 //           ),
 //           ElevatedButton(
 //             onPressed: () async {
-//               // Clear chat history
 //               Navigator.pop(context);
 //
 //               // Show loading
@@ -567,43 +882,46 @@
 //               );
 //
 //               try {
-//                 // Get all messages
+//                 // Get all message IDs
 //                 QuerySnapshot messages = await _firestore
 //                     .collection('chats')
 //                     .doc(_chatId)
 //                     .collection('messages')
 //                     .get();
 //
-//                 // Delete messages in batches of 500 (Firestore limit)
-//                 const int batchSize = 500;
-//                 List<List<DocumentSnapshot>> batches = [];
+//                 // Get current chat document
+//                 DocumentSnapshot chatDoc = await _firestore
+//                     .collection('chats')
+//                     .doc(_chatId)
+//                     .get();
 //
-//                 for (int i = 0; i < messages.docs.length; i += batchSize) {
-//                   int end = (i + batchSize < messages.docs.length)
-//                       ? i + batchSize
-//                       : messages.docs.length;
-//                   batches.add(messages.docs.sublist(i, end));
-//                 }
-//
-//                 for (var batch in batches) {
-//                   WriteBatch writeBatch = _firestore.batch();
-//                   for (var doc in batch) {
-//                     writeBatch.delete(doc.reference);
+//                 // Get or initialize the hidden messages array
+//                 List<String> hiddenMessages = [];
+//                 if (chatDoc.exists) {
+//                   Map<String, dynamic> chatData = chatDoc.data() as Map<String, dynamic>;
+//                   if (chatData.containsKey('hiddenForProviders') &&
+//                       chatData['hiddenForProviders'] is List) {
+//                     hiddenMessages = List<String>.from(chatData['hiddenForProviders']);
 //                   }
-//                   await writeBatch.commit();
 //                 }
 //
-//                 // Update chat document
+//                 // Add all message IDs to hidden list
+//                 messages.docs.forEach((doc) {
+//                   if (!hiddenMessages.contains(doc.id)) {
+//                     hiddenMessages.add(doc.id);
+//                   }
+//                 });
+//
+//                 // Update the chat document with hidden messages
 //                 await _firestore.collection('chats').doc(_chatId).update({
-//                   'lastMessage': '',
-//                   'lastMessageTime': FieldValue.serverTimestamp(),
+//                   'hiddenForProviders': hiddenMessages,
 //                 });
 //
 //                 // Close loading dialog
 //                 Navigator.pop(context);
 //
 //                 ScaffoldMessenger.of(context).showSnackBar(
-//                   SnackBar(content: Text('Chat history cleared successfully.')),
+//                   SnackBar(content: Text('Chat history cleared successfully (only for you).')),
 //                 );
 //               } catch (e) {
 //                 // Close loading dialog
@@ -624,6 +942,8 @@
 //     );
 //   }
 // }
+//
+//
 
 
 import 'package:flutter/material.dart';
@@ -633,11 +953,9 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/shared/services/image_service.dart';
-
-// Import your ImageService
-
 
 class MessageClientPage extends StatefulWidget {
   final String clientId;
@@ -645,7 +963,7 @@ class MessageClientPage extends StatefulWidget {
   final String clientImage;
   final String serviceId;
   final String serviceName;
-  final String? clientPhone; // Added client phone parameter
+  final String? clientPhone;
 
   const MessageClientPage({
     Key? key,
@@ -654,7 +972,7 @@ class MessageClientPage extends StatefulWidget {
     required this.clientImage,
     required this.serviceId,
     required this.serviceName,
-    this.clientPhone, // Optional parameter for client's phone number
+    this.clientPhone,
   }) : super(key: key);
 
   @override
@@ -666,7 +984,7 @@ class _MessageClientPageState extends State<MessageClientPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ScrollController _scrollController = ScrollController();
-  final ImageService _imageService = ImageService(); // Initialize image service
+  final ImageService _imageService = ImageService();
 
   late String _chatId;
   late String _providerId;
@@ -684,7 +1002,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
 
   Future<void> _initChat() async {
     try {
-      // Get current provider ID
       final User? currentUser = _auth.currentUser;
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -696,16 +1013,13 @@ class _MessageClientPageState extends State<MessageClientPage> {
 
       _providerId = currentUser.uid;
 
-      // Create a unique chat ID by combining client and provider IDs alphabetically
       List<String> ids = [widget.clientId, _providerId];
-      ids.sort(); // Sort to ensure consistency
+      ids.sort();
       _chatId = ids.join('_');
 
-      // Check if chat already exists or create it
       DocumentSnapshot chatDoc = await _firestore.collection('chats').doc(_chatId).get();
 
       if (!chatDoc.exists) {
-        // Create new chat
         await _firestore.collection('chats').doc(_chatId).set({
           'participants': [_providerId, widget.clientId],
           'lastMessage': '',
@@ -713,10 +1027,9 @@ class _MessageClientPageState extends State<MessageClientPage> {
           'serviceId': widget.serviceId,
           'serviceName': widget.serviceName,
           'createdAt': FieldValue.serverTimestamp(),
-          'hiddenForProviders': [], // Initialize list for tracking provider-hidden messages
+          'hiddenForProviders': [],
         });
       } else {
-        // Make sure the 'hiddenForProviders' field exists
         if (!(chatDoc.data() as Map<String, dynamic>).containsKey('hiddenForProviders')) {
           await _firestore.collection('chats').doc(_chatId).update({
             'hiddenForProviders': [],
@@ -728,7 +1041,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
         _isLoading = false;
       });
 
-      // Mark all unread messages as read when opening chat
       _markMessagesAsRead();
     } catch (e) {
       print('Error initializing chat: $e');
@@ -737,10 +1049,20 @@ class _MessageClientPageState extends State<MessageClientPage> {
       });
     }
   }
+  Future<bool> _checkImageUrl(String url) async {
+    if (url.isEmpty) return false;
+
+    try {
+      final response = await http.head(Uri.parse(url));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('URL check error: $e');
+      return false;
+    }
+  }
 
   Future<void> _markMessagesAsRead() async {
     try {
-      // Find all unread messages sent to current provider
       QuerySnapshot unreadMessages = await _firestore
           .collection('chats')
           .doc(_chatId)
@@ -749,13 +1071,11 @@ class _MessageClientPageState extends State<MessageClientPage> {
           .where('isRead', isEqualTo: false)
           .get();
 
-      // Update all messages to read in a batch
       WriteBatch batch = _firestore.batch();
       for (DocumentSnapshot doc in unreadMessages.docs) {
         batch.update(doc.reference, {'isRead': true});
       }
 
-      // Reset unread count for this provider
       batch.update(
           _firestore.collection('chats').doc(_chatId),
           {'unreadCount_$_providerId': 0}
@@ -770,7 +1090,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
   void _sendMessage({String? imageUrl}) async {
     String messageText = _messageController.text.trim();
 
-    // Check if there's text or image to send
     if (messageText.isEmpty && imageUrl == null) return;
 
     _messageController.clear();
@@ -781,7 +1100,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
     });
 
     try {
-      // Prepare message data
       Map<String, dynamic> messageData = {
         'senderId': _providerId,
         'receiverId': widget.clientId,
@@ -789,12 +1107,10 @@ class _MessageClientPageState extends State<MessageClientPage> {
         'isRead': false,
       };
 
-      // Add text if provided
       if (messageText.isNotEmpty) {
         messageData['text'] = messageText;
       }
 
-      // Add image URL if provided
       if (imageUrl != null) {
         messageData['imageUrl'] = imageUrl;
         messageData['type'] = 'image';
@@ -802,16 +1118,13 @@ class _MessageClientPageState extends State<MessageClientPage> {
         messageData['type'] = 'text';
       }
 
-      // Add message to Firestore
       await _firestore.collection('chats').doc(_chatId).collection('messages').add(messageData);
 
-      // Update chat with last message
       Map<String, dynamic> chatUpdate = {
         'lastMessageTime': FieldValue.serverTimestamp(),
         'unreadCount_${widget.clientId}': FieldValue.increment(1),
       };
 
-      // Set the last message preview
       if (imageUrl != null && messageText.isEmpty) {
         chatUpdate['lastMessage'] = '📷 Image';
       } else if (imageUrl != null) {
@@ -822,7 +1135,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
 
       await _firestore.collection('chats').doc(_chatId).update(chatUpdate);
 
-      // Scroll to bottom after sending
       _scrollToBottom();
     } catch (e) {
       print('Error sending message: $e');
@@ -840,11 +1152,9 @@ class _MessageClientPageState extends State<MessageClientPage> {
     });
 
     try {
-      // Upload the image
       String? imageUrl = await _imageService.uploadImageWorking(_imageFile!, _chatId);
 
       if (imageUrl != null) {
-        // Send the message with the image URL
         _sendMessage(imageUrl: imageUrl);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -877,38 +1187,58 @@ class _MessageClientPageState extends State<MessageClientPage> {
     }
   }
 
-  // Method to call the client's phone number
-  Future<void> _callClient() async {
-    if (widget.clientPhone == null || widget.clientPhone!.isEmpty) {
-      // If phone number not available, show a message
+  Future<void> _makePhoneCall(String clientPhone) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: clientPhone,
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Client phone number not available')),
+        const SnackBar(
+          content: Text('Could not launch phone dialer'),
+          backgroundColor: Colors.red,
+        ),
       );
-      return;
+    }
+  }
+
+  // Group messages by date
+  Map<String, List<DocumentSnapshot>> _groupMessagesByDate(List<DocumentSnapshot> messages) {
+    Map<String, List<DocumentSnapshot>> groupedMessages = {};
+
+    for (var message in messages) {
+      final data = message.data() as Map<String, dynamic>;
+      final timestamp = data['timestamp'] as Timestamp?;
+
+      if (timestamp != null) {
+        final date = timestamp.toDate();
+        final dateKey = DateFormat('yyyy-MM-dd').format(date);
+
+        if (!groupedMessages.containsKey(dateKey)) {
+          groupedMessages[dateKey] = [];
+        }
+        groupedMessages[dateKey]!.add(message);
+      }
     }
 
-    try {
-      // Try to make a direct call using the plugin
-      bool? callResult = await FlutterPhoneDirectCaller.callNumber(widget.clientPhone!);
+    return groupedMessages;
+  }
 
-      // Check if the call was successful
-      if (callResult != true) {
-        // If direct call fails, try launching the dialer
-        final Uri launchUri = Uri(
-          scheme: 'tel',
-          path: widget.clientPhone,
-        );
-        if (await canLaunchUrl(launchUri)) {
-          await launchUrl(launchUri);
-        } else {
-          throw 'Could not launch $launchUri';
-        }
-      }
-    } catch (e) {
-      print('Error making phone call: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not make the call. Please try again.')),
-      );
+  String _formatDateHeader(String dateKey) {
+    final date = DateTime.parse(dateKey);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(Duration(days: 1));
+    final messageDate = DateTime(date.year, date.month, date.day);
+
+    if (messageDate == today) {
+      return 'Today';
+    } else if (messageDate == yesterday) {
+      return 'Yesterday';
+    } else {
+      return DateFormat('MMM dd, yyyy').format(date);
     }
   }
 
@@ -925,16 +1255,40 @@ class _MessageClientPageState extends State<MessageClientPage> {
         ),
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: widget.clientImage.isNotEmpty
-                  ? NetworkImage(widget.clientImage)
-                  : null,
-              child: widget.clientImage.isEmpty
-                  ? Icon(Icons.person, color: Colors.blue[300])
-                  : null,
+            FutureBuilder<String?>(
+              future: _getClientProfileImage(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey[300],
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  );
+                }
+
+                final imageUrl = snapshot.data;
+                return CircleAvatar(
+                  radius: 20,
+                  backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                      ? NetworkImage(imageUrl)
+                      : null,
+                  child: imageUrl == null || imageUrl.isEmpty
+                      ? Text(
+                    widget.clientName.isNotEmpty ? widget.clientName[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                      : null,
+                );
+              },
             ),
-            SizedBox(width: 10),
+            SizedBox(width: 5),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -954,10 +1308,11 @@ class _MessageClientPageState extends State<MessageClientPage> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.call),
-            onPressed: _callClient,
-          ),
+          if (widget.clientPhone != null)
+            IconButton(
+              icon: Icon(Icons.call),
+              onPressed: () => _callClient(),
+            ),
           IconButton(
             icon: Icon(Icons.more_vert),
             onPressed: () {
@@ -1020,7 +1375,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
                   );
                 }
 
-                // Check for hidden messages for this provider
                 return StreamBuilder<DocumentSnapshot>(
                   stream: _firestore.collection('chats').doc(_chatId).snapshots(),
                   builder: (context, chatSnapshot) {
@@ -1030,7 +1384,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
 
                     List<String> hiddenMessages = [];
 
-                    // Get hidden messages for this provider
                     if (chatSnapshot.data!.exists) {
                       Map<String, dynamic> chatData = chatSnapshot.data!.data() as Map<String, dynamic>;
                       if (chatData.containsKey('hiddenForProviders') &&
@@ -1039,7 +1392,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
                       }
                     }
 
-                    // Filter out hidden messages
                     List<DocumentSnapshot> visibleMessages = _messages.where((message) {
                       return !hiddenMessages.contains(message.id);
                     }).toList();
@@ -1067,21 +1419,52 @@ class _MessageClientPageState extends State<MessageClientPage> {
                       );
                     }
 
+                    // Group messages by date
+                    Map<String, List<DocumentSnapshot>> groupedMessages = _groupMessagesByDate(visibleMessages);
+                    List<String> sortedDates = groupedMessages.keys.toList()..sort();
+
                     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
                     return ListView.builder(
                       controller: _scrollController,
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      itemCount: visibleMessages.length,
-                      itemBuilder: (context, index) {
-                        final message = visibleMessages[index].data() as Map<String, dynamic>;
-                        final isMe = message['senderId'] == _providerId;
-                        final timestamp = message['timestamp'] as Timestamp?;
-                        final time = timestamp != null
-                            ? DateFormat('hh:mm a').format(timestamp.toDate())
-                            : '';
+                      itemCount: sortedDates.length,
+                      itemBuilder: (context, dateIndex) {
+                        String dateKey = sortedDates[dateIndex];
+                        List<DocumentSnapshot> messagesForDate = groupedMessages[dateKey]!;
 
-                        return _buildMessageBubble(message, isMe, time);
+                        return Column(
+                          children: [
+                            // Date header
+                            Container(
+                              margin: EdgeInsets.symmetric(vertical: 16),
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _formatDateHeader(dateKey),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            // Messages for this date
+                            ...messagesForDate.map((message) {
+                              final messageData = message.data() as Map<String, dynamic>;
+                              final isMe = messageData['senderId'] == _providerId;
+                              final timestamp = messageData['timestamp'] as Timestamp?;
+                              final time = timestamp != null
+                                  ? DateFormat('hh:mm a').format(timestamp.toDate())
+                                  : '';
+
+                              return _buildMessageBubble(messageData, isMe, time);
+                            }).toList(),
+                          ],
+                        );
                       },
                     );
                   },
@@ -1132,8 +1515,8 @@ class _MessageClientPageState extends State<MessageClientPage> {
   }
 
   Widget _buildMessageBubble(Map<String, dynamic> message, bool isMe, String time) {
-    // Get message type
-    String type = message['type'] ?? 'text';
+    final hasImage = message['imageUrl'] != null;
+    final hasText = message['text'] != null;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -1142,7 +1525,10 @@ class _MessageClientPageState extends State<MessageClientPage> {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: hasImage ? 8 : 10
+        ),
         decoration: BoxDecoration(
           color: isMe ? Colors.blueGrey[100] : Colors.blueGrey[100],
           borderRadius: BorderRadius.circular(16).copyWith(
@@ -1153,61 +1539,96 @@ class _MessageClientPageState extends State<MessageClientPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Show message content based on type
-            if (type == 'image')
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      message['imageUrl'],
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          height: 150,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 100,
-                        width: double.infinity,
-                        color: Colors.grey[300],
-                        child: Icon(Icons.broken_image, size: 40),
-                      ),
-                    ),
-                  ),
-                  if (message['text'] != null && message['text'].isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        message['text'],
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-
-            if (type != 'image' && message['text'] != null)
+            if (hasText)
               Text(
                 message['text'],
                 style: TextStyle(
-                  color: Colors.black87,
+                  color: isMe ? Colors.black87 : Colors.black87,
                   fontSize: 16,
                 ),
               ),
-
+            if (hasText && hasImage) SizedBox(height: 8),
+            if (hasImage)
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        backgroundColor: Colors.black,
+                        appBar: AppBar(
+                          backgroundColor: Colors.black,
+                          iconTheme: IconThemeData(color: Colors.white),
+                          elevation: 0,
+                        ),
+                        body: Center(
+                          child: InteractiveViewer(
+                            panEnabled: true,
+                            boundaryMargin: EdgeInsets.all(20),
+                            minScale: 0.5,
+                            maxScale: 4,
+                            child: Image.network(
+                              message['imageUrl'],
+                              fit: BoxFit.contain,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    message['imageUrl'],
+                    width: 200,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 200,
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                                : null,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 200,
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             SizedBox(height: 2),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -1215,25 +1636,45 @@ class _MessageClientPageState extends State<MessageClientPage> {
                 Text(
                   time,
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: isMe ? Colors.grey[600] : Colors.grey[600],
                     fontSize: 10,
                   ),
                 ),
                 if (isMe) SizedBox(width: 4),
                 if (isMe)
                   Icon(
-                    message['isRead'] == true
-                        ? Icons.done_all
-                        : Icons.done,
-                    size: 14,
-                    color: message['isRead'] == true
-                    ? Colors.green
-                    : Colors.grey[600]
-
+                      message['isRead'] == true
+                          ? Icons.done_all
+                          : Icons.done,
+                      size: 14,
+                      color: message['isRead'] == true
+                          ? Colors.green
+                          : Colors.grey[600]
                   ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullScreenImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height * 0.8,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(imageUrl),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1257,7 +1698,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
           IconButton(
             icon: Icon(Icons.attach_file, color: Color(0xFF344D67)),
             onPressed: () async {
-              // Show image picker
               final File? pickedImage = await _imageService.showImagePickerDialog(context);
               if (pickedImage != null) {
                 setState(() {
@@ -1297,6 +1737,54 @@ class _MessageClientPageState extends State<MessageClientPage> {
         ],
       ),
     );
+  }
+
+  Future<String?> _getClientProfileImage() async {
+    if (widget.clientImage.isNotEmpty) {
+      return widget.clientImage;
+    }
+
+    try {
+      final doc = await _firestore.collection('users').doc(widget.clientId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['profileImageUrl'] as String?;
+      }
+    } catch (e) {
+      print('Error fetching client profile image: $e');
+    }
+
+    return null;
+  }
+
+  Future<void> _callClient() async {
+    if (widget.clientPhone == null || widget.clientPhone!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Client phone number not available')),
+      );
+      return;
+    }
+
+    try {
+      bool? callResult = await FlutterPhoneDirectCaller.callNumber(widget.clientPhone!);
+
+      if (callResult != true) {
+        final Uri launchUri = Uri(
+          scheme: 'tel',
+          path: widget.clientPhone,
+        );
+        if (await canLaunchUrl(launchUri)) {
+          await launchUrl(launchUri);
+        } else {
+          throw 'Could not launch $launchUri';
+        }
+      }
+    } catch (e) {
+      print('Error making phone call: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not make the call. Please try again.')),
+      );
+    }
   }
 
   void _showOptionsMenu(BuildContext context) {
@@ -1371,7 +1859,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Submit report
               if (reportController.text.trim().isNotEmpty) {
                 _firestore.collection('reports').add({
                   'reporterId': _providerId,
@@ -1409,12 +1896,11 @@ class _MessageClientPageState extends State<MessageClientPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Block user
               _firestore.collection('service provider').doc(_providerId).collection('blocked').doc(widget.clientId).set({
                 'blockedAt': FieldValue.serverTimestamp(),
               });
               Navigator.pop(context);
-              Navigator.pop(context); // Go back to previous screen
+              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Client blocked successfully.')),
               );
@@ -1444,7 +1930,6 @@ class _MessageClientPageState extends State<MessageClientPage> {
             onPressed: () async {
               Navigator.pop(context);
 
-              // Show loading
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -1452,20 +1937,17 @@ class _MessageClientPageState extends State<MessageClientPage> {
               );
 
               try {
-                // Get all message IDs
                 QuerySnapshot messages = await _firestore
                     .collection('chats')
                     .doc(_chatId)
                     .collection('messages')
                     .get();
 
-                // Get current chat document
                 DocumentSnapshot chatDoc = await _firestore
                     .collection('chats')
                     .doc(_chatId)
                     .get();
 
-                // Get or initialize the hidden messages array
                 List<String> hiddenMessages = [];
                 if (chatDoc.exists) {
                   Map<String, dynamic> chatData = chatDoc.data() as Map<String, dynamic>;
@@ -1475,26 +1957,22 @@ class _MessageClientPageState extends State<MessageClientPage> {
                   }
                 }
 
-                // Add all message IDs to hidden list
                 messages.docs.forEach((doc) {
                   if (!hiddenMessages.contains(doc.id)) {
                     hiddenMessages.add(doc.id);
                   }
                 });
 
-                // Update the chat document with hidden messages
                 await _firestore.collection('chats').doc(_chatId).update({
                   'hiddenForProviders': hiddenMessages,
                 });
 
-                // Close loading dialog
                 Navigator.pop(context);
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Chat history cleared successfully (only for you).')),
                 );
               } catch (e) {
-                // Close loading dialog
                 Navigator.pop(context);
 
                 ScaffoldMessenger.of(context).showSnackBar(

@@ -1464,6 +1464,55 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
     }
   }
 
+  Future<void> _toggleServiceStatus(bool isActive) async {
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(width: 10),
+              Text(isActive ? 'Activating service...' : 'Deactivating service...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Update the service status in Firestore
+      await FirebaseFirestore.instance
+          .collection('services')
+          .doc(widget.serviceId)
+          .update({
+        'isActive': isActive,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+
+      // Refresh the data
+      await _loadServiceData();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isActive
+              ? '✅ Service activated! Customers can now book this service.'
+              : '⚠️ Service deactivated! Customers will see it with an "Unavailable" overlay and cannot be booked'),
+          backgroundColor: isActive ? Colors.green : Colors.redAccent,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update service status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+
   Future<void> _pickAndUploadSampleImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -1944,13 +1993,28 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      serviceData!['name'] ?? '',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xff0F3966),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          serviceData!['name'] ?? '',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xff0F3966),
+                          ),
+                        ),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Switch(
+                            value: serviceData!['isActive'] ?? true,
+                            activeColor: Color(0xff0F3966),
+                            onChanged: (value) {
+                              _toggleServiceStatus(value);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: 8),
                     Text(

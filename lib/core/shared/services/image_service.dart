@@ -326,3 +326,18 @@ class ImageService {
     );
   }
 }
+
+// Add this to your ImageService class
+Future<ImageProvider> getImageProvider(String imageUrl) async {
+  if (imageUrl.isEmpty) {
+    return AssetImage('assets/placeholder.png'); // Fallback to local asset
+  }
+  try {
+    // For network images
+    return NetworkImage(imageUrl);
+    // Or if you need custom caching:
+    // return await yourCustomCachingImplementation(imageUrl);
+  } catch (e) {
+    return AssetImage('assets/placeholder.png'); // Fallback on error
+  }
+}

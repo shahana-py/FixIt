@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fixit/features/service_provider/view/view_reviews.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../core/shared/services/image_service.dart';
+import 'earnings_analysis.dart';
 
 class ProviderSideDrawer extends StatefulWidget {
   const ProviderSideDrawer({super.key});
@@ -12,12 +16,15 @@ class ProviderSideDrawer extends StatefulWidget {
 
 class _ProviderSideDrawerState extends State<ProviderSideDrawer> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ImageService _imageService = ImageService();
   Map<String, dynamic>? providerData;
   bool _isLoading = true;
+  String? _currentProviderId;
 
   @override
   void initState() {
     super.initState();
+    _currentProviderId = _auth.currentUser?.uid;
     fetchProviderDetails();
   }
 
@@ -172,7 +179,40 @@ class _ProviderSideDrawerState extends State<ProviderSideDrawer> {
             title: 'Reviews',
             onTap: () {
               Navigator.pop(context);
-              // Navigate to reviews page
+              if (_currentProviderId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProviderReviewsPage(
+                      providerId: _currentProviderId!,
+                      imageService: _imageService,
+                    ),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Unable to load reviews. Please try again.')),
+                );
+              }
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.account_balance_wallet,
+            title: 'My Earnings',
+            onTap: () {
+              Navigator.pop(context);
+              if (_currentProviderId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProviderEarningsPage(providerId: _currentProviderId!),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Unable to load my earnings. Please try again.')),
+                );
+              }
             },
           ),
           Padding(

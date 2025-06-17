@@ -409,6 +409,107 @@ class _FavoritesPageState extends State<FavoritesPage> {
     _fetchFavoriteServices();
   }
 
+  // Future<void> _fetchFavoriteServices() async {
+  //   User? currentUser = FirebaseAuth.instance.currentUser;
+  //   if (currentUser == null) {
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //     return;
+  //   }
+  //
+  //   try {
+  //     // First, get user's favorite service IDs
+  //     DocumentSnapshot userDoc = await FirebaseFirestore.instance
+  //         .collection('users')
+  //         .doc(currentUser.uid)
+  //         .get();
+  //
+  //     List<String> favoriteIds = [];
+  //     if (userDoc.exists && userDoc.data() is Map<String, dynamic>) {
+  //       var userData = userDoc.data() as Map<String, dynamic>;
+  //       if (userData.containsKey('favorites') && userData['favorites'] is List) {
+  //         favoriteIds = List<String>.from(userData['favorites']);
+  //         _favoriteServiceIds = Set<String>.from(favoriteIds);
+  //       }
+  //     }
+  //
+  //     if (favoriteIds.isEmpty) {
+  //       setState(() {
+  //         _isLoading = false;
+  //         _favoriteServices = [];
+  //       });
+  //       return;
+  //     }
+  //
+  //     // Fetch all favorited services
+  //     List<Map<String, dynamic>> favoriteServices = [];
+  //
+  //     // Process in batches if there are many favorites
+  //     for (int i = 0; i < favoriteIds.length; i += 10) {
+  //       int end = (i + 10 < favoriteIds.length) ? i + 10 : favoriteIds.length;
+  //       List<String> batch = favoriteIds.sublist(i, end);
+  //
+  //       // Make sure we have valid IDs before querying
+  //       batch = batch.where((id) => id.isNotEmpty).toList();
+  //
+  //       if (batch.isEmpty) continue;
+  //
+  //       QuerySnapshot servicesSnapshot = await FirebaseFirestore.instance
+  //           .collection('services')
+  //           .where(FieldPath.documentId, whereIn: batch)
+  //           .get();
+  //
+  //       for (var doc in servicesSnapshot.docs) {
+  //         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  //
+  //         // Get provider details
+  //         String providerId = data['provider_id'] ?? '';
+  //         Map<String, dynamic> providerData = {};
+  //
+  //         if (providerId.isNotEmpty) {
+  //           DocumentSnapshot providerDoc = await FirebaseFirestore.instance
+  //               .collection('service provider')
+  //               .doc(providerId)
+  //               .get();
+  //
+  //           if (providerDoc.exists) {
+  //             providerData = providerDoc.data() as Map<String, dynamic>;
+  //           }
+  //         }
+  //
+  //         // Parse numeric values safely
+  //         num hourlyRate = _parseNumber(data['hourly_rate']);
+  //         num rating = _parseNumber(data['rating']);
+  //         num ratingCount = _parseNumber(data['rating_count']);
+  //
+  //         favoriteServices.add({
+  //           'id': doc.id,
+  //           'name': data['name'] ?? '',
+  //           'hourly_rate': hourlyRate,
+  //           'rating': rating,
+  //           'rating_count': ratingCount,
+  //           'work_sample': data['work_sample'] ?? '',
+  //           'work_samples': data['work_samples'] ?? [],
+  //           'provider_name': providerData['name'] ?? 'Unknown',
+  //           'provider_image': providerData['profileImage'] ?? '',
+  //           'provider_id': providerId,
+  //         });
+  //       }
+  //     }
+  //
+  //     setState(() {
+  //       _favoriteServices = favoriteServices;
+  //       _isLoading = false;
+  //     });
+  //   } catch (e) {
+  //     print('Error fetching favorite services: $e');
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
   Future<void> _fetchFavoriteServices() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -419,7 +520,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
     }
 
     try {
-      // First, get user's favorite service IDs
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -442,15 +542,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
         return;
       }
 
-      // Fetch all favorited services
       List<Map<String, dynamic>> favoriteServices = [];
 
-      // Process in batches if there are many favorites
       for (int i = 0; i < favoriteIds.length; i += 10) {
         int end = (i + 10 < favoriteIds.length) ? i + 10 : favoriteIds.length;
         List<String> batch = favoriteIds.sublist(i, end);
-
-        // Make sure we have valid IDs before querying
         batch = batch.where((id) => id.isNotEmpty).toList();
 
         if (batch.isEmpty) continue;
@@ -460,42 +556,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
             .where(FieldPath.documentId, whereIn: batch)
             .get();
 
+        // Process services and fetch ratings in parallel
+        List<Future<Map<String, dynamic>?>> serviceFutures = [];
+
         for (var doc in servicesSnapshot.docs) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-          // Get provider details
-          String providerId = data['provider_id'] ?? '';
-          Map<String, dynamic> providerData = {};
-
-          if (providerId.isNotEmpty) {
-            DocumentSnapshot providerDoc = await FirebaseFirestore.instance
-                .collection('service provider')
-                .doc(providerId)
-                .get();
-
-            if (providerDoc.exists) {
-              providerData = providerDoc.data() as Map<String, dynamic>;
-            }
-          }
-
-          // Parse numeric values safely
-          num hourlyRate = _parseNumber(data['hourly_rate']);
-          num rating = _parseNumber(data['rating']);
-          num ratingCount = _parseNumber(data['rating_count']);
-
-          favoriteServices.add({
-            'id': doc.id,
-            'name': data['name'] ?? '',
-            'hourly_rate': hourlyRate,
-            'rating': rating,
-            'rating_count': ratingCount,
-            'work_sample': data['work_sample'] ?? '',
-            'work_samples': data['work_samples'] ?? [],
-            'provider_name': providerData['name'] ?? 'Unknown',
-            'provider_image': providerData['profileImage'] ?? '',
-            'provider_id': providerId,
-          });
+          serviceFutures.add(_processServiceDocument(doc));
         }
+
+        List<Map<String, dynamic>?> results = await Future.wait(serviceFutures);
+        favoriteServices.addAll(results.whereType<Map<String, dynamic>>());
       }
 
       setState(() {
@@ -509,8 +578,51 @@ class _FavoritesPageState extends State<FavoritesPage> {
       });
     }
   }
+  Future<Map<String, dynamic>?> _processServiceDocument(QueryDocumentSnapshot doc) async {
+    try {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      String providerId = data['provider_id'] ?? '';
+
+      // Fetch provider details and average rating in parallel
+      var results = await Future.wait([
+        providerId.isNotEmpty
+            ? FirebaseFirestore.instance
+            .collection('service provider')
+            .doc(providerId)
+            .get()
+            : Future.value(null),
+        _fetchAverageRating(doc.id, providerId),
+      ]);
+
+      // Explicitly cast the results
+      DocumentSnapshot? providerDoc = results[0] as DocumentSnapshot?;
+      double averageRating = results[1] as double;
+
+      Map<String, dynamic> providerData = {};
+      if (providerDoc != null && providerDoc.exists) {
+        providerData = providerDoc.data() as Map<String, dynamic>;
+      }
+
+      return {
+        'id': doc.id,
+        'name': data['name'] ?? '',
+        'hourly_rate': _parseNumber(data['hourly_rate']),
+        'rating': averageRating,
+        'rating_count': _parseNumber(data['rating_count']),
+        'work_sample': data['work_sample'] ?? '',
+        'work_samples': data['work_samples'] ?? [],
+        'provider_name': providerData['name'] ?? 'Unknown',
+        'provider_image': providerData['profileImage'] ?? '',
+        'provider_id': providerId,
+      };
+    } catch (e) {
+      print('Error processing service document: $e');
+      return null;
+    }
+  }
 
   // Helper method to safely parse numbers from various formats
+
   num _parseNumber(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value;
@@ -520,6 +632,29 @@ class _FavoritesPageState extends State<FavoritesPage> {
       return num.tryParse(cleanedValue) ?? 0;
     }
     return 0;
+  }
+
+  Future<double> _fetchAverageRating(String serviceId, String providerId) async {
+    try {
+      QuerySnapshot ratingsSnapshot = await FirebaseFirestore.instance
+          .collection('ratings')
+          .where('service_id', isEqualTo: serviceId)
+          .where('provider_id', isEqualTo: providerId)
+          .get();
+
+      if (ratingsSnapshot.docs.isEmpty) return 0.0;
+
+      double totalRating = 0;
+      for (var doc in ratingsSnapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        totalRating += (data['rating'] ?? 0).toDouble();
+      }
+
+      return totalRating / ratingsSnapshot.docs.length;
+    } catch (e) {
+      print('Error fetching ratings: $e');
+      return 0.0;
+    }
   }
 
   Future<void> _toggleFavorite(String serviceId) async {
@@ -607,8 +742,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   childAspectRatio: 0.7,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 5,
+                  mainAxisSpacing: 5,
                 ),
                 itemCount: _favoriteServices.length,
                 itemBuilder: (context, index) {

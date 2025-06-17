@@ -132,28 +132,21 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
 
 
           _buildDrawerItem(
-            icon: Icons.bookmark,
-            title: 'Bookmarks',
+            icon: Icons.favorite,
+            title: 'My Favorites',
             onTap: () {
-              Navigator.pop(context);
-              // Navigate to bookmarks page
+              Navigator.pushNamed(context, '/userfavouritespage');
             },
           ),
 
-          _buildDrawerItem(
-            icon: Icons.history,
-            title: 'Service History',
-            onTap: () {
-              Navigator.pop(context);
-              // Navigate to service history page
-            },
-          ),
+
 
           _buildDrawerItem(
             icon: Icons.request_page,
-            title: 'My Requests',
+            title: 'My Bookings',
             onTap: () {
-              Navigator.pop(context);
+              Navigator.pushNamed(context, '/userbookingspage');
+
               // Navigate to my requests page
             },
           ),
@@ -170,7 +163,7 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             icon: Icons.help,
             title: 'Help Center',
             onTap: () {
-              Navigator.pop(context);
+
               Navigator.pushNamed(context, '/userhelpsupportpage');
             },
           ),
@@ -178,7 +171,7 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             icon: Icons.feedback,
             title: 'Report a Complaint',
             onTap: () {
-              Navigator.pop(context);
+
               Navigator.pushNamed(context, '/reportcomplaintspage');
             },
           ),
@@ -187,7 +180,7 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             icon: Icons.settings,
             title: 'Settings',
             onTap: () {
-              Navigator.pop(context);
+
               Navigator.pushNamed(context, '/usersettingspage');
             },
           ),

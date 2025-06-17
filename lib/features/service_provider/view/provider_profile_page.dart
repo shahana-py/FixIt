@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ProviderProfilePage extends StatefulWidget {
   const ProviderProfilePage({super.key});
@@ -250,19 +251,54 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
     );
   }
 
+  // Widget _buildProfileAvatar() {
+  //   final profileImageUrl = providerData?['profileImage'];
+  //   final hasImage = profileImageUrl != null && profileImageUrl.isNotEmpty;
+  //
+  //   return CircleAvatar(
+  //     radius: 60,
+  //     backgroundColor: Colors.white38,
+  //     backgroundImage: hasImage
+  //         ? NetworkImage('$profileImageUrl?t=$_imageTimestamp')
+  //         : null,
+  //     child: hasImage
+  //         ? null
+  //         : Icon(Icons.person, size: 50, color: Colors.white),
+  //   );
+  // }
   Widget _buildProfileAvatar() {
     final profileImageUrl = providerData?['profileImage'];
     final hasImage = profileImageUrl != null && profileImageUrl.isNotEmpty;
 
-    return CircleAvatar(
-      radius: 60,
-      backgroundColor: Colors.yellow,
-      backgroundImage: hasImage
-          ? NetworkImage('$profileImageUrl?t=$_imageTimestamp')
-          : null,
-      child: hasImage
-          ? null
-          : Icon(Icons.person, size: 50, color: Colors.white),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Shimmer placeholder
+        if (hasImage)
+          Shimmer.fromColors(
+            baseColor: Colors.grey[400]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+
+        CircleAvatar(
+          radius: 60,
+          backgroundColor: Colors.white38,
+          backgroundImage: hasImage
+              ? NetworkImage('$profileImageUrl?t=$_imageTimestamp')
+              : null,
+          child: hasImage
+              ? null
+              : Icon(Icons.person, size: 50, color: Colors.white),
+        ),
+      ],
     );
   }
 

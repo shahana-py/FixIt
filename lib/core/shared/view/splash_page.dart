@@ -156,15 +156,20 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
             // Logo fades in smoothly
             FadeTransition(
               opacity: _fadeAnimation,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage("assets/images/splash_logo_blue.png"),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+              child: CircleAvatar(
+                radius: 50,
+
+                backgroundImage: AssetImage("assets/images/splash.png")
+                // child: Container(
+                //   width: 100,
+                //   height: 100,
+                //   decoration: BoxDecoration(
+                //     image: DecorationImage(
+                //       image: AssetImage("assets/images/splash_logo_blue.png"),
+                //       fit: BoxFit.cover,
+                //     ),
+                //   ),
+                // ),
               ),
             ),
             SizedBox(height: 20),
@@ -178,7 +183,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                   child: Text(
                     "FixIt"[index],
                     style: TextStyle(
-                      fontSize: 30,
+                      fontSize: 40,
                       color: Color(0xff0F3966),
                       fontWeight: FontWeight.bold,
                     ),

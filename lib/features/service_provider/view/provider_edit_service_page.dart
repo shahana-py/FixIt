@@ -65,7 +65,8 @@ class _EditServicePageState extends State<EditServicePage> {
         'name': _nameController.text,
         'description': _descriptionController.text,
         'experience': int.tryParse(_experienceController.text) ?? 0,
-        'hourly_rate': double.tryParse(_rateController.text) ?? 0,
+        'hourly_rate': _rateController.text,
+        // 'hourly_rate': double.tryParse(_rateController.text) ?? 0,
         'available_areas': _selectedAreas,
         'available_days': _selectedDays,
       });
