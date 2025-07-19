@@ -24,6 +24,30 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
     fetchProviderDetails();
   }
 
+  // Future<void> fetchProviderDetails() async {
+  //   setState(() => _isLoading = true);
+  //
+  //   User? user = _auth.currentUser;
+  //   if (user != null) {
+  //     DocumentSnapshot providerDoc = await FirebaseFirestore.instance
+  //         .collection('service provider')
+  //         .doc(user.uid)
+  //         .get();
+  //
+  //     if (providerDoc.exists) {
+  //       setState(() {
+  //         providerData = providerDoc.data() as Map<String, dynamic>;
+  //         _isLoading = false;
+  //         // Update timestamp to force image refresh
+  //         _imageTimestamp = DateTime.now().millisecondsSinceEpoch.toString();
+  //       });
+  //     } else {
+  //       setState(() => _isLoading = false);
+  //     }
+  //   } else {
+  //     setState(() => _isLoading = false);
+  //   }
+  // }
   Future<void> fetchProviderDetails() async {
     setState(() => _isLoading = true);
 
@@ -238,11 +262,22 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
           ],
         ),
       ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: ()async {
+      //     // Navigate to edit profile and refresh data when returning
+      //     final result = await Navigator.pushNamed(context, "/editprofileprovider");
+      //     // Always refresh data when returning from edit page
+      //     fetchProviderDetails();
+      //   },
+      //   backgroundColor: Color(0xff0F3966),
+      //   child: Icon(Icons.edit, color: Colors.white),
+      // ),
       floatingActionButton: FloatingActionButton(
-        onPressed: ()async {
+        onPressed: () async {
           // Navigate to edit profile and refresh data when returning
           final result = await Navigator.pushNamed(context, "/editprofileprovider");
-          // Always refresh data when returning from edit page
+          // Force refresh with new timestamp
+          _imageTimestamp = DateTime.now().millisecondsSinceEpoch.toString();
           fetchProviderDetails();
         },
         backgroundColor: Color(0xff0F3966),
@@ -251,19 +286,40 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
     );
   }
 
+
   // Widget _buildProfileAvatar() {
   //   final profileImageUrl = providerData?['profileImage'];
   //   final hasImage = profileImageUrl != null && profileImageUrl.isNotEmpty;
   //
-  //   return CircleAvatar(
-  //     radius: 60,
-  //     backgroundColor: Colors.white38,
-  //     backgroundImage: hasImage
-  //         ? NetworkImage('$profileImageUrl?t=$_imageTimestamp')
-  //         : null,
-  //     child: hasImage
-  //         ? null
-  //         : Icon(Icons.person, size: 50, color: Colors.white),
+  //   return Stack(
+  //     alignment: Alignment.center,
+  //     children: [
+  //       // Shimmer placeholder
+  //       if (hasImage)
+  //         Shimmer.fromColors(
+  //           baseColor: Colors.grey[400]!,
+  //           highlightColor: Colors.grey[100]!,
+  //           child: Container(
+  //             width: 120,
+  //             height: 120,
+  //             decoration: BoxDecoration(
+  //               color: Colors.white,
+  //               shape: BoxShape.circle,
+  //             ),
+  //           ),
+  //         ),
+  //
+  //       CircleAvatar(
+  //         radius: 60,
+  //         backgroundColor: Colors.white38,
+  //         backgroundImage: hasImage
+  //             ? NetworkImage('$profileImageUrl?t=$_imageTimestamp')
+  //             : null,
+  //         child: hasImage
+  //             ? null
+  //             : Icon(Icons.person, size: 50, color: Colors.white),
+  //       ),
+  //     ],
   //   );
   // }
   Widget _buildProfileAvatar() {
@@ -273,7 +329,6 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Shimmer placeholder
         if (hasImage)
           Shimmer.fromColors(
             baseColor: Colors.grey[400]!,
@@ -292,7 +347,7 @@ class _ProviderProfilePageState extends State<ProviderProfilePage> {
           radius: 60,
           backgroundColor: Colors.white38,
           backgroundImage: hasImage
-              ? NetworkImage('$profileImageUrl?t=$_imageTimestamp')
+              ? NetworkImage('$profileImageUrl?v=$_imageTimestamp') as ImageProvider
               : null,
           child: hasImage
               ? null

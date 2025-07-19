@@ -186,19 +186,6 @@ class _ServiceProviderSettingsPageState extends State<ServiceProviderSettingsPag
 
           SizedBox(height: 16),
 
-          // Availability Status
-          SwitchListTile(
-            title: Text('Availability Status'),
-            subtitle: Text('Show/hide your availability for services'),
-            value: _availabilityStatus,
-            onChanged: (bool value) {
-              setState(() {
-                _availabilityStatus = value;
-              });
-              _saveSettings();
-            },
-            activeColor: Color(0xff0F3966),
-          ),
 
           // Notification Settings
           SwitchListTile(
@@ -237,23 +224,7 @@ class _ServiceProviderSettingsPageState extends State<ServiceProviderSettingsPag
             onTap: _showLanguageDialog,
           ),
 
-          // Payment Settings
-          ListTile(
-            title: Text('Payment Methods'),
-            trailing: Icon(Icons.payment),
-            onTap: () {
-              Navigator.pushNamed(context, '/payment_settings');
-            },
-          ),
 
-          // Service Categories
-          ListTile(
-            title: Text('Manage Service Categories'),
-            trailing: Icon(Icons.category),
-            onTap: () {
-              Navigator.pushNamed(context, '/service_categories');
-            },
-          ),
 
           // Change Password
           ListTile(
@@ -380,7 +351,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   labelText: 'Current Password',
                   prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _isObscured = !_isObscured;
@@ -403,7 +374,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   labelText: 'New Password',
                   prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _isObscured = !_isObscured;
@@ -429,7 +400,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   labelText: 'Confirm New Password',
                   prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _isObscured = !_isObscured;

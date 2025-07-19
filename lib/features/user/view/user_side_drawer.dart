@@ -89,20 +89,22 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             decoration: BoxDecoration(
               color: Colors.blue,
             ),
-            currentAccountPicture: CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.white,
-              backgroundImage: userData!['profileImage'] != null && userData!['profileImage'].isNotEmpty
-                  ? NetworkImage(userData!['profileImage'])
-                  : null,
-              child: userData!['profileImage'] == null || userData!['profileImage'].isEmpty
-                  ? Icon(Icons.person, color: Colors.blueAccent, size: 50)
-                  : null,
-            ),
+            // currentAccountPicture: CircleAvatar(
+            //   radius: 40,
+            //   backgroundColor: Colors.white,
+            //   backgroundImage: userData!['profileImage'] != null && userData!['profileImage'].isNotEmpty
+            //       ? NetworkImage(userData!['profileImage'])
+            //       : null,
+            //   child: userData!['profileImage'] == null || userData!['profileImage'].isEmpty
+            //       ? Icon(Icons.person, color: Colors.blueAccent, size: 50)
+            //       : null,
+            // ),
+
+
             accountName: Text(
               userData!['name'] ?? 'User',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -114,6 +116,7 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
               ),
             ),
           ),
+
 
 
           // Drawer Menu Items
@@ -146,6 +149,15 @@ class _UserSideDrawerState extends State<UserSideDrawer> {
             title: 'My Bookings',
             onTap: () {
               Navigator.pushNamed(context, '/userbookingspage');
+
+              // Navigate to my requests page
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.home_repair_service,
+            title: 'All Services',
+            onTap: () {
+              Navigator.pushNamed(context, '/userviewservicespage');
 
               // Navigate to my requests page
             },

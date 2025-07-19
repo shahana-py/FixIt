@@ -340,7 +340,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
 
-                    icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _isObscured = !_isObscured;
@@ -363,7 +363,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   labelText: 'New Password',
                   prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _isObscured = !_isObscured;
@@ -389,7 +389,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   labelText: 'Confirm New Password',
                   prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _isObscured = !_isObscured;

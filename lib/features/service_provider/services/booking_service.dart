@@ -277,7 +277,7 @@ class BookingService {
       'pending': ['pending', 'pending_payment'],
       'confirmed': ['confirmed', 'accepted', 'in_progress', 'dispatched', 'arrived'],
       'completed': ['completed'],
-      'declined': ['declined'],
+      'declined': ['declined','cancelled'],
     };
 
     List<String> statusesToQuery = filterToStatus[filter] ?? [];

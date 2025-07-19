@@ -38,6 +38,49 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
           ),
         ]
     ),
+    HelpCategory(
+        title: 'Service Providers',
+        items: [
+
+          HelpItem(
+              question: 'Can I choose a specific service provider?',
+              answer: 'Yes, you can view provider profiles, ratings, and reviews before selecting your preferred professional.'
+          ),
+
+          HelpItem(
+              question: 'How do I rate my service provider?',
+              answer: 'After service completion, you\'ll receive a rating prompt. You can rate on a 5-star scale and provide written feedback.'
+          ),
+        ]
+    ),
+    HelpCategory(
+        title: 'Account & Security',
+        items: [
+          HelpItem(
+              question: 'How do I reset my password?',
+              answer: 'Go to "Settings" > "Change password" . You can reset your password from there.'
+          ),
+          HelpItem(
+              question: 'Can I change my registered phone number?',
+              answer: 'Yes, visit "My Profile" > Click on edit button. Then you can change your number from there.'
+          ),
+
+        ]
+    ),
+    HelpCategory(
+        title: 'Technical Support',
+        items: [
+          HelpItem(
+              question: 'The app keeps crashing. What should I do?',
+              answer: 'Try these steps:\n1. Clear app cache\n2. Restart your device\nIf issues persist, contact our support team.'
+          ),
+          HelpItem(
+              question: 'I\'m not receiving notifications. How to fix?',
+              answer: 'Check your device notification settings for our app and ensure you haven\'t disabled notifications.'
+          ),
+
+        ]
+    ),
   ];
 
   final List<HelpCategory> _providerHelpCategories = [
@@ -46,11 +89,11 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         items: [
           HelpItem(
               question: 'How do I update my service offerings?',
-              answer: 'Go to "My Profile" > "Services" and click on "Edit Services" to add, modify, or remove service offerings.'
+              answer: 'Go to My services section under that all of your services will be listed, from there you can update your services'
           ),
           HelpItem(
               question: 'How can I manage my availability?',
-              answer: 'Navigate to "My Schedule" to set your working hours, block specific dates, and manage your availability for bookings.'
+              answer: 'If you are unavailable temporarly for then you can off your service by clicking the on/off button at the top of your service'
           ),
         ]
     ),
@@ -58,13 +101,28 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         title: 'Earnings and Payments',
         items: [
           HelpItem(
-              question: 'How and when do I get paid?',
-              answer: 'Payments are processed weekly. Earnings are transferred to your linked bank account or digital wallet. Minimum payout threshold is \$50.'
+              question: 'How can i check my earnings report',
+              answer: 'You can check it by clicking the wallet icon in the home page.You can see your daily,monthly and total earnings analysis from there'
           ),
           HelpItem(
               question: 'How are service ratings calculated?',
               answer: 'Your overall rating is an average of all customer ratings. Maintain high-quality service to improve your rating and attract more customers.'
           ),
+        ]
+    ),
+    HelpCategory(
+        title: 'Customer Interactions',
+        items: [
+          HelpItem(
+              question: 'How should I communicate with customers?',
+              answer: 'Use our in-app messaging for all communications. This ensures records are kept for dispute resolution if needed.'
+          ),
+          HelpItem(
+              question: 'What if a customer is unsatisfied with my service?',
+              answer: 'Try to resolve issues professionally. If unresolved, contact our support team who will mediate and find a solution.'
+          ),
+
+
         ]
     ),
   ];
@@ -100,8 +158,8 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         }, icon: Icon(Icons.arrow_back)),
         iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: Color(0xff0F3966),
-        title:AppBarTitle(text: 'Help & Support ${widget.isServiceProvider ? 'for Service Providers' : 'for Users'}'),
-        centerTitle: true,
+        title:AppBarTitle(text: 'Help & Support'),
+
       ),
       body: Column(
         children: [

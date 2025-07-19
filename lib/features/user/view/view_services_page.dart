@@ -835,7 +835,7 @@ class _ViewServicesPageState extends State<ViewServicesPage> {
           title: AppBarTitle(text: "All Services"),
           backgroundColor: Color(0xff0F3966),
         ),
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Color(0xff0F3966),)),
       );
     }
 
